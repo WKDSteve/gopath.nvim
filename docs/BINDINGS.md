@@ -41,11 +41,11 @@ or a list of lhs strings (`{ "gP", "<leader>gp" }`).
 neither opens a buffer, so neither goes through create-on-missing or the
 external-opener heuristic below — both warn instead of prompting when the
 resolved path does not exist. `open_explorer` is backed by
-[lib.nvim's `cross.reveal_in_fm`](https://github.com/StefanBartl/lib.nvim),
+[lib.nvim's `cross.reveal_in_fm`](https://github.com/WKDSteve/lib.nvim),
 falling back to a minimal built-in per-OS reveal
 (`explorer.exe /select,`/`open -R`/`xdg-open`) when lib.nvim is absent.
 `open_filetree` is backed by
-[filetree.nvim](https://github.com/StefanBartl/filetree.nvim)'s
+[filetree.nvim](https://github.com/WKDSteve/filetree.nvim)'s
 `adapter.open_reveal()` — a soft dependency with no fallback: it warns
 (rather than erroring) when filetree.nvim isn't installed or hasn't
 completed `setup()` yet.
@@ -63,7 +63,7 @@ in the originally requested window mode, jumping to `res.range` if present.
 There is **no** automatic "open nearest existing folder" fallback — a
 directory can't be opened in a buffer the way a file can. Instead, when the
 unresolved path has an existing ancestor directory *and*
-[filetree.nvim](https://github.com/StefanBartl/filetree.nvim) is installed
+[filetree.nvim](https://github.com/WKDSteve/filetree.nvim) is installed
 and set up, the dialog offers a second button, **"Open in filetree"**: sets
 cwd to that directory and roots/focuses filetree.nvim's tree there.
 
@@ -81,7 +81,7 @@ Config: `create_on_missing = { enable = true, confirm = true }`.
 ### `:Gopath` subcommand tree
 
 `:Gopath <subcommand> [args…]` — built via
-[`lib.nvim.bindings.usercmd.composer`](https://github.com/StefanBartl/lib.nvim),
+[`lib.nvim.bindings.usercmd.composer`](https://github.com/WKDSteve/lib.nvim),
 tab-completion works at every level. `cache *` subcommands only appear when
 `truncated.enable = true` in config.
 

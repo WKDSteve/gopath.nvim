@@ -11,7 +11,7 @@ split, what the create-on-missing dialog looks like, whether the PDF chooser
 appears. CI only checks that they are still valid, side-effect-free Lua.
 
 **`scripts/ci/` holds the automated suites.** They are plain Lua run by
-[testing.nvim](https://github.com/StefanBartl/testing.nvim) (`bash scripts/test.sh`,
+[testing.nvim](https://github.com/WKDSteve/testing.nvim) (`bash scripts/test.sh`,
 configured by `.testing.lua`) with their own assertion helpers — there is no
 plenary/busted dependency, and no spec here starts a subprocess or touches the
 network.

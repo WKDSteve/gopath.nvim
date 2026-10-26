@@ -63,7 +63,7 @@ A resolved-but-missing path is not offered through create-on-missing here —
 `gM` warns instead, since there is nothing on disk yet to reveal.
 
 - **Module:** `external/helpers/revealer.lua`, backed by
-  [lib.nvim's `cross.reveal_in_fm`](https://github.com/StefanBartl/lib.nvim)
+  [lib.nvim's `cross.reveal_in_fm`](https://github.com/WKDSteve/lib.nvim)
   (falls back to a minimal built-in per-OS reveal when lib.nvim is absent)
 - **Config:** `mappings.open_explorer` (default `"gM"`, set `false` to disable)
 
@@ -72,7 +72,7 @@ A resolved-but-missing path is not offered through create-on-missing here —
 `gT` (config key `mappings.open_filetree`, also `:Gopath open filetree` /
 `:GopathOpen filetree`) is the in-editor analogue of `gM` above: resolves the
 path under the cursor the same way, but focuses it in
-[filetree.nvim](https://github.com/StefanBartl/filetree.nvim)'s own sidebar
+[filetree.nvim](https://github.com/WKDSteve/filetree.nvim)'s own sidebar
 instead of the OS file manager — for navigating a project through Neovim's
 own tree rather than switching to a separate window. Same priority reasoning
 as `gM`: it takes precedence over the external-app heuristic, and a
@@ -93,7 +93,7 @@ no non-filetree.nvim way to reveal a path *inside Neovim's own tree*.
 Three-stage fallback for actually launching the external application, each
 stage falling through to the next on dispatch failure rather than only
 when the stage is merely unavailable:
-[open.nvim](https://github.com/StefanBartl/open.nvim)'s `default` handler
+[open.nvim](https://github.com/WKDSteve/open.nvim)'s `default` handler
 (if installed) → lib.nvim's cross-platform system opener → a minimal
 built-in per-OS opener (`open`/`xdg-open`/`explorer.exe`).
 

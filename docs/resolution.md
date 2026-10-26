@@ -55,7 +55,7 @@ in order and returns the first success:
 |-------|----------|---------|
 | 1 | `:help` subject | token looks like a Vim help tag |
 | 2 | `$VAR` env path | token starts with `$` or `${` |
-| 2.5 | **task id** | `<area>/<slug>` under the cursor, resolved by [tasks.nvim](https://github.com/StefanBartl/tasks.nvim) (`tasks_nvim.resolve`) — only when tasks.nvim is installed and a vault has that area and task; an open task and a finished one, or the id in two `tasks.vaults`, are offered to pick from |
+| 2.5 | **task id** | `<area>/<slug>` under the cursor, resolved by [tasks.nvim](https://github.com/WKDSteve/tasks.nvim) (`tasks_nvim.resolve`) — only when tasks.nvim is installed and a vault has that area and task; an open task and a finished one, or the id in two `tasks.vaults`, are offered to pick from |
 | 3 | **filetoken** | `<cfile>` under cursor; searches `&path` (honouring `suffixesadd`), rtp, then the **cache** |
 | 3.5 | **linepath** | scans the whole current line (stacktraces, extension-driven, absolute); resolves absolute → cwd-relative → **buffer-relative** → cache tail |
 | 4 | Language pipeline | LSP → Treesitter → builtin (per filetype, e.g. Lua `require`). The LSP step returns immediately when no client is attached — see below |
@@ -203,7 +203,7 @@ top-level entry can be hidden by a stale index, and four signals cover that:
    (an empty `.pdf` is not a useful thing to conjure up).
    **PDFs** additionally route through
    [`gopath.external.pdf`](../lua/gopath/external/pdf.lua): with
-   [pdfport.nvim](https://github.com/StefanBartl/pdfport.nvim) installed you get
+   [pdfport.nvim](https://github.com/WKDSteve/pdfport.nvim) installed you get
    a chooser — *System app* (first; it's the exception, so it stays one
    keystroke away), *Buffer*, *Float*, *Terminal*. "System app" goes through
    gopath's own opener, so it behaves identically with or without pdfport.
@@ -257,7 +257,7 @@ There used to be a third fallback that opened the nearest existing ancestor
 *directory* of the unresolved path as a buffer — removed, because a directory
 can't be opened in a Neovim buffer the way a file can (it just handed you to
 netrw with no warning). When the resolved path has an existing ancestor
-directory and [filetree.nvim](https://github.com/StefanBartl/filetree.nvim)
+directory and [filetree.nvim](https://github.com/WKDSteve/filetree.nvim)
 is installed and set up, the create-on-missing dialog offers a second
 button, **"Open in filetree"**, instead: it sets Neovim's cwd to that
 directory and roots/focuses filetree.nvim's tree there. The button is only

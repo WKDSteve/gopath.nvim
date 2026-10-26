@@ -14,7 +14,7 @@ side: uninstalled, each falls back to `<cfile>` and loses only the cases
 
 ## hover.nvim — the path under the cursor, previewed
 
-[hover.nvim](https://github.com/StefanBartl/hover.nvim) opens a float showing
+[hover.nvim](https://github.com/WKDSteve/hover.nvim) opens a float showing
 whatever the cursor rests on. gopath is what makes a *truncated* path hover at
 all — `...nvim/init.lua` copied out of `:messages`, a `:line:col` suffix, a
 file findable only through `&path` / rtp / a tail search.
@@ -56,11 +56,11 @@ still costs ~11.5 ms — which is exactly the shape hover's gate already has. It
 refuses the slash-bearing tokens and asks for the rest.
 
 - **Consumer module:** hover.nvim `lua/hover/bare_path.lua` (`via_gopath`)
-- **Their write-up:** [hover.nvim INTEGRATIONS.md](https://github.com/StefanBartl/hover.nvim/blob/main/docs/INTEGRATIONS.md)
+- **Their write-up:** [hover.nvim INTEGRATIONS.md](https://github.com/WKDSteve/hover.nvim/blob/main/docs/INTEGRATIONS.md)
 
 ## images.nvim — the picture under the cursor
 
-[images.nvim](https://github.com/StefanBartl/images.nvim) uses gopath as the
+[images.nvim](https://github.com/WKDSteve/images.nvim) uses gopath as the
 third step of its `under_cursor`: markdown links first, a `<figure>` block
 second, then gopath, then `<cfile>`. It keeps only results whose path carries
 a configured image extension, so an LSP symbol, a `:help` subject or a URL
@@ -77,8 +77,8 @@ The two sections above are gopath as a library *other plugins* call into.
 This one is the other direction: gopath itself is a "Pattern-B" contributor
 to a host's global right-click context menu (`lib.nvim.contextmenu`/
 nvzone-menu-shaped — the same convention
-[filetree.nvim](https://github.com/StefanBartl/filetree.nvim) and
-[open.nvim](https://github.com/StefanBartl/open.nvim) ship their own menu
+[filetree.nvim](https://github.com/WKDSteve/filetree.nvim) and
+[open.nvim](https://github.com/WKDSteve/open.nvim) ship their own menu
 integrations through):
 
 ```lua

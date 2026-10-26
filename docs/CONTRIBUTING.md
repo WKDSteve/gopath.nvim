@@ -1,7 +1,7 @@
 # Contributing to gopath.nvim
 
 Thank you for your interest! Bugs, ideas and questions are welcome in the
-[issue tracker](https://github.com/StefanBartl/gopath.nvim/issues); pull requests
+[issue tracker](https://github.com/WKDSteve/gopath.nvim/issues); pull requests
 very welcome.
 
 The architecture — providers, resolvers, and how a cursor token becomes an
@@ -74,7 +74,7 @@ require("gopath").setup({ mode = "hybrid" })
 
 ## Tests
 
-The suites run on [testing.nvim](https://github.com/StefanBartl/testing.nvim)
+The suites run on [testing.nvim](https://github.com/WKDSteve/testing.nvim)
 (`bash scripts/test.sh`, configured by `.testing.lua`); there is no
 plenary/busted dependency. The specs are plain Lua with their own `check()` +
 assertion helpers (`scripts/ci/harness.lua`). Nothing they do needs an LSP

@@ -175,7 +175,7 @@ do
       LOG.debug(
         "optional dependency 'ui.nvim' not found — using vim.ui.select "
           .. "fallback for the create-on-missing prompt. Add it to your plugin "
-          .. "spec (dependencies = { 'StefanBartl/ui.nvim' }) for the themed dialog."
+          .. "spec (dependencies = { 'WKDSteve/ui.nvim' }) for the themed dialog."
       )
     end)
   end

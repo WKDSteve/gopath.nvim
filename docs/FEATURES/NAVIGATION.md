@@ -105,7 +105,7 @@ it is a property of your history, and after the first time it is known.
 `max_bonus` similarity points (default 10, on the same 0–100 scale whose
 threshold admits everything from 75 up): it reorders within a band and can
 never push a 95% match below a 76% one. The store is
-[`lib.nvim.frecency`](https://github.com/StefanBartl/lib.nvim/blob/main/lua/lib/nvim/frecency/README.md)
+[`lib.nvim.frecency`](https://github.com/WKDSteve/lib.nvim/blob/main/lua/lib/nvim/frecency/README.md)
 on its own namespace — the same implementation `pickers.nvim` ranks files
 with, deliberately not the same store: a path opened often in a picker says
 nothing about which alternate was meant here.
@@ -123,7 +123,7 @@ If no exact file and no fuzzy alternate is found, offers to create the
 file (a button dialog via ui.nvim's `ui.kit.confirm`, falling back to
 `vim.ui.select`) and jumps straight into it, creating parent directories as
 needed. If the unresolved path has an existing ancestor directory and
-[filetree.nvim](https://github.com/StefanBartl/filetree.nvim) is installed,
+[filetree.nvim](https://github.com/WKDSteve/filetree.nvim) is installed,
 the dialog offers a second option to open that directory there instead of
 creating a file. The `gC`/`:GopathCheck` keymap and command always offer
 creation explicitly, even when `create_on_missing.enable = false` disables

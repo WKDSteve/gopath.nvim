@@ -53,10 +53,10 @@ Key capabilities:
 
 lazy.nvim: >lua
   {
-    "StefanBartl/gopath.nvim",
+    "WKDSteve/gopath.nvim",
     event = "VeryLazy",
     dependencies = {
-      "StefanBartl/lib.nvim",             -- required
+      "WKDSteve/lib.nvim",             -- required
       "nvim-treesitter/nvim-treesitter",  -- optional but recommended
     },
     opts = { mode = "hybrid" },

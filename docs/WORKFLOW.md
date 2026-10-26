@@ -108,7 +108,7 @@ Every other open mode turns the resolved target into a buffer. `gM`
 (`:Gopath open explorer`) hands it to the OS file manager instead — selecting
 a file inside its parent directory, navigating into a directory. `gT`
 (`:Gopath open filetree`) does the in-editor equivalent: focuses the path in
-[filetree.nvim](https://github.com/StefanBartl/filetree.nvim)'s own sidebar
+[filetree.nvim](https://github.com/WKDSteve/filetree.nvim)'s own sidebar
 instead (soft dependency — warns if filetree.nvim isn't installed or set
 up).
 

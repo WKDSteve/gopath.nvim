@@ -50,13 +50,13 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/checkout@v5
         with:
-          repository: StefanBartl/lib.nvim
+          repository: WKDSteve/lib.nvim
           path: .deps/lib.nvim
           ref: ci-verified
       # Checked out from the branch that only moves once the dependency's own CI is green.
       - uses: actions/checkout@v5
         with:
-          repository: StefanBartl/testing.nvim
+          repository: WKDSteve/testing.nvim
           path: .deps/testing.nvim
           ref: ci-verified
       - uses: rhysd/action-setup-vim@v1
@@ -103,13 +103,13 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/checkout@v5
         with:
-          repository: StefanBartl/lib.nvim
+          repository: WKDSteve/lib.nvim
           path: .deps/lib.nvim
           ref: ci-verified
       # Checked out from the branch that only moves once the dependency's own CI is green.
       - uses: actions/checkout@v5
         with:
-          repository: StefanBartl/testing.nvim
+          repository: WKDSteve/testing.nvim
           path: .deps/testing.nvim
           ref: ci-verified
       - uses: rhysd/action-setup-vim@v1
@@ -154,13 +154,13 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/checkout@v5
         with:
-          repository: StefanBartl/lib.nvim
+          repository: WKDSteve/lib.nvim
           path: .deps/lib.nvim
           ref: ci-verified
       # Checked out from the branch that only moves once the dependency's own CI is green.
       - uses: actions/checkout@v5
         with:
-          repository: StefanBartl/testing.nvim
+          repository: WKDSteve/testing.nvim
           path: .deps/testing.nvim
           ref: ci-verified
       - uses: rhysd/action-setup-vim@v1

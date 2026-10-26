@@ -24,7 +24,7 @@ do
       LOG.debug(
         "optional dependency 'open_nvim' not found — using built-in "
           .. "system opener fallback. Add it to your plugin spec "
-          .. "(dependencies = { 'StefanBartl/open.nvim' }) for WSL support and shared handlers."
+          .. "(dependencies = { 'WKDSteve/open.nvim' }) for WSL support and shared handlers."
       )
     end)
   end

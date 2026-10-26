@@ -389,7 +389,7 @@ end
 `matcher.find_similar_files` sorts by similarity alone. `alternate/frecency.lua`
 then reorders the surviving candidates by what was chosen from this dialog
 before, through
-[`lib.nvim.frecency`](https://github.com/StefanBartl/lib.nvim/blob/main/lua/lib/nvim/frecency/README.md)
+[`lib.nvim.frecency`](https://github.com/WKDSteve/lib.nvim/blob/main/lua/lib/nvim/frecency/README.md)
 on the `gopath-alternates` namespace.
 
 The pass runs in `alternate/init.lua`'s `present()`, which is where both entry

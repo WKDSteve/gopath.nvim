@@ -19,10 +19,10 @@
 [![Lua](https://img.shields.io/badge/Lua-5.1%2FLuaJIT-2C2D72?logo=lua&logoColor=white)](https://www.lua.org)
 ![Status](https://img.shields.io/badge/status-beta-orange)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)
-[![CI](https://github.com/StefanBartl/gopath.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/StefanBartl/gopath.nvim/actions/workflows/ci.yml)
-[![wkd](https://img.shields.io/badge/wkd-family-c6ff3d)](https://stefanbartl.github.io/wkd/p/gopath/)
+[![CI](https://github.com/WKDSteve/gopath.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/WKDSteve/gopath.nvim/actions/workflows/ci.yml)
+[![wkd](https://img.shields.io/badge/wkd-family-c6ff3d)](https://wkdsteve.github.io/wkd/p/gopath/)
 
-> Part of the [wkd](https://stefanbartl.github.io/wkd/) family — see this plugin's [page](https://stefanbartl.github.io/wkd/p/gopath/) on the site.
+> Part of the [wkd](https://wkdsteve.github.io/wkd/) family — see this plugin's [page](https://wkdsteve.github.io/wkd/p/gopath/) on the site.
 
 One key, and you are at the file the cursor is pointing at — however that
 reference happens to be written. gopath.nvim resolves symbols, `require()`
@@ -32,20 +32,20 @@ stack-trace line all end in the same place: the right file, at the right line.
 
 ---
 
-> **[buffer-ctx.nvim](https://github.com/StefanBartl/buffer-ctx.nvim)** — the
+> **[buffer-ctx.nvim](https://github.com/WKDSteve/buffer-ctx.nvim)** — the
 > other direction: it *writes* a `require("foo.bar")` or `path:line` reference,
 > gopath jumps back to one.
 >
-> **[hover.nvim](https://github.com/StefanBartl/hover.nvim)** and
-> **[images.nvim](https://github.com/StefanBartl/images.nvim)** — both call
+> **[hover.nvim](https://github.com/WKDSteve/hover.nvim)** and
+> **[images.nvim](https://github.com/WKDSteve/images.nvim)** — both call
 > `resolve_at_cursor()` from outside, through `pcall`, so gopath stays a soft
 > dependency on their side. What they rely on is
 > [docs/FEATURES/INTEGRATIONS.md](docs/FEATURES/INTEGRATIONS.md).
 >
-> **[open.nvim](https://github.com/StefanBartl/open.nvim)** — takes over where
+> **[open.nvim](https://github.com/WKDSteve/open.nvim)** — takes over where
 > the target is not a file at all: a URL, a directory, an application.
 >
-> **[tasks.nvim](https://github.com/StefanBartl/tasks.nvim)** — a task id
+> **[tasks.nvim](https://github.com/WKDSteve/tasks.nvim)** — a task id
 > (`lib.nvim/my-task`) in a to-do list, a commit message or a comment opens its
 > task file, open or finished; with gF and `:Gopath open`, several matches are
 > offered to pick from (other entry points take the first). Only an id a vault
@@ -54,7 +54,7 @@ stack-trace line all end in the same place: the right file, at the right line.
 > [All options](docs/configuration.md)).
 >
 > All of the above are soft: without them everything else works unchanged.
-> [lib.nvim](https://github.com/StefanBartl/lib.nvim) is the one real
+> [lib.nvim](https://github.com/WKDSteve/lib.nvim) is the one real
 > dependency — see [Requirements](docs/installation.md#requirements).
 
 ---
@@ -83,7 +83,7 @@ each page answers.
 - [Health check](docs/troubleshooting.md#health-check) — what `:checkhealth gopath` reports.
 - [Troubleshooting](docs/troubleshooting.md#troubleshooting) — common failures and fixes.
 - [Contributing](docs/CONTRIBUTING.md) — ground rules, project layout, and how to add a resolver.
-- [Feedback](https://github.com/StefanBartl/gopath.nvim/issues)
+- [Feedback](https://github.com/WKDSteve/gopath.nvim/issues)
 
 `:help gopath` is the same reference inside the editor.
 

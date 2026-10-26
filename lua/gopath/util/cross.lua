@@ -16,7 +16,7 @@
 --- lib.nvim is somehow missing, rather than erroring, since separator
 --- normalization is cheap to approximate locally. That does not make
 --- lib.nvim actually optional for the plugin as a whole — add it to your
---- plugin spec (`dependencies = { "StefanBartl/lib.nvim" }`) regardless.
+--- plugin spec (`dependencies = { "WKDSteve/lib.nvim" }`) regardless.
 
 local M = {}
 
@@ -33,7 +33,7 @@ do
         "dependency 'lib.nvim' not found — using built-in "
           .. "path-separator fallbacks here, but other gopath modules require "
           .. "it unconditionally. Add it to your plugin spec "
-          .. "(dependencies = { 'StefanBartl/lib.nvim' })."
+          .. "(dependencies = { 'WKDSteve/lib.nvim' })."
       )
     end)
   end

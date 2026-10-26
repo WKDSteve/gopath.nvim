@@ -138,7 +138,7 @@ local function check_open_nvim()
   else
     info_s(
       "open.nvim not installed — external files use gopath's built-in per-OS opener\n"
-        .. "  install StefanBartl/open.nvim for shared handlers and WSL support"
+        .. "  install WKDSteve/open.nvim for shared handlers and WSL support"
     )
   end
 end
@@ -172,7 +172,7 @@ local function check_lib_nvim()
   else
     err_s(
       "lib.nvim not found — :Gopath will fail to register",
-      { "Install StefanBartl/lib.nvim as a dependency" }
+      { "Install WKDSteve/lib.nvim as a dependency" }
     )
   end
   if require_ok("ui.kit") then
@@ -180,7 +180,7 @@ local function check_lib_nvim()
   else
     info_s(
       "ui.nvim not installed — create-on-missing dialog falls back to vim.ui.select\n"
-        .. "  install StefanBartl/ui.nvim for the themed dialog"
+        .. "  install WKDSteve/ui.nvim for the themed dialog"
     )
   end
 end
@@ -204,7 +204,7 @@ local function check_filetree_nvim()
     info_s(
       "filetree.nvim not installed — create-on-missing dialog has no 'Open in filetree' choice, "
         .. "and open_filetree (gT) has nothing to reveal into\n"
-        .. "  install StefanBartl/filetree.nvim to open the nearest existing ancestor "
+        .. "  install WKDSteve/filetree.nvim to open the nearest existing ancestor "
         .. "directory there instead of just creating the file, or to reveal a resolved path"
     )
   end
@@ -231,7 +231,7 @@ local function check_pdfport()
   else
     info_s(
       "pdfport.nvim not installed — PDFs go straight to the system viewer\n"
-        .. "  install StefanBartl/pdfport.nvim to read PDFs inside Neovim"
+        .. "  install WKDSteve/pdfport.nvim to read PDFs inside Neovim"
     )
   end
 end
