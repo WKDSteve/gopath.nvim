@@ -252,10 +252,14 @@ local function parser_available(ft)
 end
 
 ---Filetype of the buffer `:checkhealth` was run from. By the time a check runs,
----`vim.health` has already made its fresh `health://` scratch buffer (filetype "")
----current, in a tab, a split, the same window or a float. In every one of those
----layouts the user's buffer is the alternate buffer; the previous window is a
----second guess. Calling `check()` directly from a normal buffer keeps working.
+---`vim.health` has already made its fresh `health://` scratch buffer current (filetype
+---"" on 0.11+, "checkhealth" on 0.10), in a split, a float, a new tab or the same
+---window. After a split or a float the window it was run from is the previous window;
+---a new tab has no previous window, there (and in the same window) the user's buffer is
+---the alternate buffer. The previous window comes first because `:keepalt` reaches the
+---float (opened by `nvim_open_win`, not by an Ex command): it then inherits the
+---alternate buffer of the window it was run from instead of that window's own buffer.
+---Calling `check()` directly from a normal buffer keeps working.
 ---@internal
 ---@return string? ft  nil when no filetype can be determined
 local function origin_filetype()
@@ -265,11 +269,14 @@ local function origin_filetype()
     if ft == "" or ft == "checkhealth" then return nil end
     return ft
   end
-  local ft = usable(vim.api.nvim_get_current_buf()) or usable(vim.fn.bufnr("#"))
+  local ft = usable(vim.api.nvim_get_current_buf())
   if ft then return ft end
   local prev = vim.fn.winnr("#")
-  if prev > 0 then return usable(vim.api.nvim_win_get_buf(vim.fn.win_getid(prev))) end
-  return nil
+  if prev > 0 then
+    ft = usable(vim.api.nvim_win_get_buf(vim.fn.win_getid(prev)))
+    if ft then return ft end
+  end
+  return usable(vim.fn.bufnr("#"))
 end
 
 ---Report nvim-treesitter availability and parser coverage for the filetype of the

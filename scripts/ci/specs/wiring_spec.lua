@@ -647,12 +647,39 @@ return function(H)
     H.falsy(called, "get_clients exists, so the legacy name is not called")
   end)
 
-  ---Run `:checkhealth gopath` with the current buffer's filetype set to `ft`
+  ---Run `fn`, then close every window and wipe every buffer it opened and go back to the tab and
+  ---window it started in -- also when `fn` raises, so a failing check leaves no layout behind for
+  ---the next one. New windows close before the buffers go: wiping a buffer that a window of
+  ---another tab shows would close that window (and its tab) too.
+  ---@generic T
+  ---@param fn fun(): T
+  ---@return T
+  local function in_scratch_layout(fn)
+    local tab, win = vim.api.nvim_get_current_tabpage(), vim.api.nvim_get_current_win()
+    local wins, bufs = {}, {}
+    for _, w in ipairs(vim.api.nvim_list_wins()) do
+      wins[w] = true
+    end
+    for _, b in ipairs(vim.api.nvim_list_bufs()) do
+      bufs[b] = true
+    end
+    local ok, res = pcall(fn)
+    for _, w in ipairs(vim.api.nvim_list_wins()) do
+      if not wins[w] then pcall(vim.api.nvim_win_close, w, true) end
+    end
+    if vim.api.nvim_tabpage_is_valid(tab) then vim.api.nvim_set_current_tabpage(tab) end
+    if vim.api.nvim_win_is_valid(win) then vim.api.nvim_set_current_win(win) end
+    for _, b in ipairs(vim.api.nvim_list_bufs()) do
+      if not bufs[b] then pcall(vim.api.nvim_buf_delete, b, { force = true }) end
+    end
+    if not ok then error(res, 0) end
+    return res
+  end
+
+  ---Run `gopath.health.check()` directly (not through `:checkhealth`) from the current buffer
   ---and return the "Tree-sitter" section's lines as one string.
-  ---@param ft string
   ---@return string
-  local function treesitter_section(ft)
-    H.buf({ "" }, { filetype = ft })
+  local function record_treesitter_section()
     local lines, inside = {}, false
     local function rec(kind)
       return function(s)
@@ -677,6 +704,20 @@ return function(H)
     H.fresh("gopath.health")
     if not ok then error(err, 0) end
     return table.concat(lines, "\n")
+  end
+
+  ---`record_treesitter_section()` run from a buffer of the last filetype in `fts`. Each filetype
+  ---gets a buffer of its own, opened in that order in the current window, so the one before the
+  ---last is the alternate buffer. The buffers are wiped afterwards.
+  ---@param fts string|string[]
+  ---@return string
+  local function treesitter_section(fts)
+    return in_scratch_layout(function()
+      for _, ft in ipairs(type(fts) == "table" and fts or { fts }) do
+        H.buf({ "" }, { filetype = ft })
+      end
+      return record_treesitter_section()
+    end)
   end
 
   H.check(
@@ -720,55 +761,114 @@ return function(H)
   end)
 
   H.check("health.check: a filetype mapped to another language uses that language", function()
-    -- Like core's `sh` -> bash mapping, but onto the bundled lua parser so the spec does not
-    -- depend on which other parsers this machine has. Core has no API to unregister a mapping,
-    -- so this one stays for the rest of the session: deliberately, on a filetype name nothing
-    -- else in the suite (or in Neovim) uses, so no later spec can observe it.
-    vim.treesitter.language.register("lua", "gopath_lua_alias")
-    local text = treesitter_section("gopath_lua_alias")
-    H.match(text, "ok: Parser available for filetype: gopath_lua_alias %(language 'lua'%)")
+    -- Core itself maps the `help` filetype onto the vimdoc parser it bundles (0.10+). No
+    -- vim.treesitter.language.register() of our own: core has no API to undo one.
+    local text = treesitter_section("help")
+    H.match(text, "ok: Parser available for filetype: help %(language 'vimdoc'%)")
+  end)
+
+  H.check("health.check: tolerates the 0.10 language.add contract (raise / no value)", function()
+    -- 0.10 raises when there is no parser and returns nothing on success; 0.11+ return true or
+    -- `nil, err`. The CI runs one (current) Neovim only, so the 0.10 contract is stubbed here.
+    local function add_0_10(lang)
+      if lang ~= "lua" then
+        error("no parser for '" .. lang .. "' language, see :help treesitter-parsers")
+      end
+    end
+    ---The section for a buffer of `ft`, with the stub in place for check() only: the lua
+    ---ftplugin starts Tree-sitter when the buffer gets its filetype, and that needs the real add.
+    local function section_on_0_10(ft)
+      return in_scratch_layout(function()
+        H.buf({ "" }, { filetype = ft })
+        local text
+        H.with_field(vim.treesitter.language, "add", add_0_10, function()
+          text = record_treesitter_section()
+        end)
+        return text
+      end)
+    end
+    H.match(section_on_0_10("lua"), "ok: Parser available for filetype: lua")
+    H.match(
+      section_on_0_10("gopath_no_such_parser"),
+      "info: No Tree%-sitter parser for filetype 'gopath_no_such_parser'"
+    )
+  end)
+
+  H.check("health.check: skips a 'checkhealth' buffer, as 0.10's health:// buffer is", function()
+    -- 0.10 sets the health:// buffer's filetype to "checkhealth" before the checks run (0.11+
+    -- only afterwards, so it is "" there); the buffer it was run from is the alternate buffer.
+    local text = treesitter_section({ "lua", "checkhealth" })
+    H.match(text, "ok: Parser available for filetype: lua %(language 'lua'%)")
+    H.no_match(
+      text,
+      "filetype:? '?checkhealth",
+      "the health:// buffer's own filetype is not checked"
+    )
   end)
 
   ---Run the real `:checkhealth gopath` (as a user does) from a buffer of filetype `ft`, laid out
-  ---by `style`/`mods`, and return the lines of the resulting health:// buffer.
+  ---by `style`/`mods`, and return the lines of the resulting health:// buffer. Everything the run
+  ---opens is closed and wiped afterwards, also when `:checkhealth` raises.
   ---@param ft string
   ---@param lines string[]  content of the buffer the command is run from
   ---@param style 'float'|nil  value for vim.g.health.style
   ---@param mods string|nil  command modifiers, e.g. "vertical"
+  ---@param alt_ft string|nil  filetype of a buffer opened first in the same window, so that it is
+  ---  the alternate buffer of the window `:checkhealth` is run from
   ---@return string
-  local function real_checkhealth(ft, lines, style, mods)
-    local tab = vim.api.nvim_get_current_tabpage()
-    local win = vim.api.nvim_get_current_win()
-    local origin = H.buf(lines, { filetype = ft, listed = true })
-    local health_buf
-    local ok, err = pcall(function()
+  local function real_checkhealth(ft, lines, style, mods, alt_ft)
+    return in_scratch_layout(function()
+      if alt_ft then H.buf({ "" }, { filetype = alt_ft, listed = true }) end
+      H.buf(lines, { filetype = ft, listed = true })
       H.with_field(vim.g, "health", style and { style = style } or nil, function()
         vim.cmd((mods and (mods .. " ") or "") .. "checkhealth gopath")
-        health_buf = vim.api.nvim_get_current_buf()
       end)
+      local health_buf = vim.fn.bufnr("health://")
+      if health_buf < 0 then return "" end
+      return table.concat(vim.api.nvim_buf_get_lines(health_buf, 0, -1, false), "\n")
     end)
-    local text = health_buf
-        and table.concat(vim.api.nvim_buf_get_lines(health_buf, 0, -1, false), "\n")
-      or ""
-    if health_buf and health_buf ~= origin and vim.api.nvim_buf_is_valid(health_buf) then
-      vim.cmd("silent! bwipeout! " .. health_buf)
-    end
-    if vim.api.nvim_tabpage_is_valid(tab) then vim.api.nvim_set_current_tabpage(tab) end
-    if vim.api.nvim_win_is_valid(win) then vim.api.nvim_set_current_win(win) end
-    if vim.api.nvim_buf_is_valid(origin) then vim.cmd("silent! bwipeout! " .. origin) end
-    if not ok then error(err, 0) end
-    return text
   end
+
+  H.check("health: real_checkhealth leaves no tab, window or buffer behind on a failure", function()
+    local tabs, wins = #vim.api.nvim_list_tabpages(), #vim.api.nvim_list_wins()
+    local opened
+    -- Fails the way a broken vim.health._check would: after its new tab is open. (:checkhealth
+    -- turns any such error into E5009 "Invalid $VIMRUNTIME".)
+    local function failing_check()
+      opened = vim.api.nvim_create_buf(true, true)
+      vim.cmd("tab sbuffer " .. opened)
+      error("gopath_check_failed", 0)
+    end
+    local ok, err = pcall(H.with_field, vim.health, "_check", failing_check, function()
+      real_checkhealth("lua", { "local x = 1" })
+    end)
+    H.falsy(ok, "the failure reaches the check")
+    H.match(tostring(err), "Vim%(checkhealth%)")
+    H.eq(#vim.api.nvim_list_tabpages(), tabs, "the new tab is closed")
+    H.eq(#vim.api.nvim_list_wins(), wins, "no window is left")
+    H.falsy(opened and vim.api.nvim_buf_is_valid(opened), "the buffer it opened is wiped")
+  end)
 
   for _, case in ipairs({
     { label = "in a new tab (default)", lines = { "local x = 1" } },
     { label = "in a split (:vertical)", lines = { "local x = 1" }, mods = "vertical" },
     { label = "in a float (vim.g.health.style)", lines = { "local x = 1" }, style = "float" },
+    -- :keepalt reaches the float (opened by nvim_open_win, not by an Ex command): it inherits
+    -- the alternate buffer of the window it was run from (the "vim" decoy below), not that
+    -- window's own lua buffer.
+    {
+      label = "in a float under :keepalt",
+      lines = { "local x = 1" },
+      style = "float",
+      mods = "keepalt",
+    },
   }) do
     H.check(
       "health: the real :checkhealth gopath checks the filetype it was run from, " .. case.label,
       function()
-        local text = real_checkhealth("lua", case.lines, case.style, case.mods)
+        -- A "vim" buffer as the alternate of the window it is run from: a decoy that must never
+        -- be reported instead of the lua buffer.
+        local text = real_checkhealth("lua", case.lines, case.style, case.mods, "vim")
         H.match(text, "Tree%-sitter", "the Tree-sitter section was rendered")
         H.match(
           text,
@@ -783,7 +883,7 @@ return function(H)
   H.check(
     "health: the real :checkhealth gopath says so when there is no filetype to check",
     function()
-      local text = real_checkhealth("", { "plain text" })
+      local text = real_checkhealth("", { "plain text" }, nil, nil, "vim")
       H.match(text, "No filetype to check a parser for", "no silent gap in the section")
       H.no_match(text, "Parser available for filetype", "nothing is claimed")
     end

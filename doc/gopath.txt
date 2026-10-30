@@ -457,7 +457,9 @@ Verifies:
   - Neovim version (>= 0.10 required)
   - External tools: fd / fdfind, rg, git
   - Active LSP clients
-  - Tree-sitter parsers for current filetype
+  - Tree-sitter: a parser for the filetype of the buffer you ran
+    :checkhealth gopath from (asked of the built-in vim.treesitter;
+    nvim-treesitter is not required)
   - Configuration: linepath, tailsearch, alternate, keymaps
   - Truncated cache: finder module, file count, staleness
   - Language resolvers enabled/disabled
