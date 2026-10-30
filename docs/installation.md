@@ -24,7 +24,7 @@ Optional, each detected at runtime and degrading to nothing when absent:
 
 | | |
 | --- | --- |
-| [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) | Strongly recommended — the Treesitter phase reads the node under the cursor instead of guessing at the line |
+| A Tree-sitter parser for the filetype | Strongly recommended — the Treesitter phase reads the node under the cursor instead of guessing at the line. gopath only uses Neovim's built-in `vim.treesitter`; [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) is merely one way to install parsers Neovim does not bundle (run `:checkhealth gopath` from a buffer of that filetype to see whether it has one) |
 | An LSP client | The first and most certain phase of the pipeline |
 | `fd` / `fdfind` / `rg` | Speed up resolving a truncated path tail; without them the cache is built by walking |
 | [ui.nvim](https://github.com/WKDSteve/ui.nvim) | `ui.kit.confirm`/`ui.kit.select` back the create-on-missing dialog and the fuzzy-alternate/multi-match pickers -- falling back to `vim.ui.select` when absent |
@@ -45,7 +45,7 @@ plugin's own spec with `deps_popup = false`, or globally with
   event = "VeryLazy",
   dependencies = {
     "WKDSteve/lib.nvim",             -- cross-platform path helpers
-    "nvim-treesitter/nvim-treesitter",  -- optional but recommended
+    "nvim-treesitter/nvim-treesitter",  -- optional: installs Tree-sitter parsers
   },
   opts = {
     mode = "hybrid",
@@ -80,7 +80,7 @@ use {
   "WKDSteve/gopath.nvim",
   requires = {
     "WKDSteve/lib.nvim",             -- required: :Gopath command layer + path helpers
-    "nvim-treesitter/nvim-treesitter",  -- optional but recommended
+    "nvim-treesitter/nvim-treesitter",  -- optional: installs Tree-sitter parsers
   },
   config = function()
     require("gopath").setup({

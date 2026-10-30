@@ -19,7 +19,9 @@ Checks:
 - Neovim version compatibility
 - External tools: `fd`/`fdfind`, `rg`, `git`
 - Active LSP clients
-- Tree-sitter parsers
+- Tree-sitter: whether a parser is available for the filetype of the buffer
+  you ran `:checkhealth gopath` from (asked of Neovim's built-in
+  `vim.treesitter`; nvim-treesitter is not required)
 - which-key.nvim availability
 - Configuration (linepath, tailsearch, alternate, keymaps)
 - `setup()` options: unrecognized keys (with a "did you mean" hint) and

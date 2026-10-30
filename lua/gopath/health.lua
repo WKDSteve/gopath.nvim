@@ -236,26 +236,68 @@ local function check_pdfport()
   end
 end
 
----Report nvim-treesitter availability and parser coverage for the current filetype.
+---Whether a Tree-sitter parser can be loaded for filetype `ft`, asked of core
+---`vim.treesitter` only (nvim-treesitter's `parsers.has_parser` is gone in its
+---rewrite, and gopath never needs the plugin at runtime).
+---@internal
+---@param ft string
+---@return boolean available
+---@return string lang  the language `ft` maps to
+local function parser_available(ft)
+  local lang = vim.treesitter.language.get_lang(ft) or ft
+  -- 0.9/0.10 raise when no parser is found and return nothing on success;
+  -- 0.11+ return `true`, or `nil, err` when no parser is found.
+  local ok, loaded, err = pcall(vim.treesitter.language.add, lang)
+  return ok and not (loaded == nil and err ~= nil), lang
+end
+
+---Filetype of the buffer `:checkhealth` was run from. By the time a check runs,
+---`vim.health` has already made its fresh `health://` scratch buffer (filetype "")
+---current, in a tab, a split, the same window or a float. In every one of those
+---layouts the user's buffer is the alternate buffer; the previous window is a
+---second guess. Calling `check()` directly from a normal buffer keeps working.
+---@internal
+---@return string? ft  nil when no filetype can be determined
+local function origin_filetype()
+  local function usable(buf)
+    if not (buf and buf > 0 and vim.api.nvim_buf_is_valid(buf)) then return nil end
+    local ft = vim.bo[buf].filetype
+    if ft == "" or ft == "checkhealth" then return nil end
+    return ft
+  end
+  local ft = usable(vim.api.nvim_get_current_buf()) or usable(vim.fn.bufnr("#"))
+  if ft then return ft end
+  local prev = vim.fn.winnr("#")
+  if prev > 0 then return usable(vim.api.nvim_win_get_buf(vim.fn.win_getid(prev))) end
+  return nil
+end
+
+---Report nvim-treesitter availability and parser coverage for the filetype of the
+---buffer `:checkhealth` was run from.
 ---@internal
 local function check_treesitter()
   start_s("Tree-sitter")
   if require_ok("nvim-treesitter") then
-    ok_s("nvim-treesitter installed")
+    ok_s("nvim-treesitter installed (parser installer; gopath itself uses core vim.treesitter)")
   else
-    info_s("nvim-treesitter not installed — treesitter-based resolvers disabled")
+    info_s(
+      "nvim-treesitter not installed — fine: gopath uses core vim.treesitter, "
+        .. "it only needs a parser for the filetype"
+    )
   end
-  local ft = vim.bo.filetype
-  if ft and ft ~= "" then
-    local ok_ts = pcall(function()
-      local p = require("nvim-treesitter.parsers")
-      if not p.has_parser(ft) then error("no parser") end
-    end)
-    if ok_ts then
-      ok_s("Parser available for filetype: " .. ft)
-    else
-      info_s("No Tree-sitter parser for filetype '" .. ft .. "'")
-    end
+  local ft = origin_filetype()
+  if not ft then
+    info_s(
+      "No filetype to check a parser for — run :checkhealth gopath from a buffer of the "
+        .. "filetype you care about"
+    )
+    return
+  end
+  local available, lang = parser_available(ft)
+  if available then
+    ok_s("Parser available for filetype: " .. ft .. " (language '" .. lang .. "')")
+  else
+    info_s("No Tree-sitter parser for filetype '" .. ft .. "'")
   end
 end
 

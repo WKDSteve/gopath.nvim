@@ -46,7 +46,8 @@ Key capabilities:
   - Optional: fd / fdfind  (fast file search)
   - Optional: rg (ripgrep) (fallback search)
   - Optional: git           (git-root detection)
-  - Optional: nvim-treesitter
+  - Optional: Tree-sitter parsers for your filetypes (gopath uses the
+    built-in vim.treesitter; nvim-treesitter is only one way to install them)
 
 ==============================================================================
 3. INSTALLATION                                         *gopath-installation*
@@ -57,7 +58,7 @@ lazy.nvim: >lua
     event = "VeryLazy",
     dependencies = {
       "WKDSteve/lib.nvim",             -- required
-      "nvim-treesitter/nvim-treesitter",  -- optional but recommended
+      "nvim-treesitter/nvim-treesitter",  -- optional: installs Tree-sitter parsers
     },
     opts = { mode = "hybrid" },
   }

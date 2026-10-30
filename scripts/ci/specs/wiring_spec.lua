@@ -647,6 +647,148 @@ return function(H)
     H.falsy(called, "get_clients exists, so the legacy name is not called")
   end)
 
+  ---Run `:checkhealth gopath` with the current buffer's filetype set to `ft`
+  ---and return the "Tree-sitter" section's lines as one string.
+  ---@param ft string
+  ---@return string
+  local function treesitter_section(ft)
+    H.buf({ "" }, { filetype = ft })
+    local lines, inside = {}, false
+    local function rec(kind)
+      return function(s)
+        if kind == "start" then inside = s == "Tree-sitter" end
+        if inside and kind ~= "start" then lines[#lines + 1] = kind .. ": " .. tostring(s) end
+      end
+    end
+    local recorder = {
+      start = rec("start"),
+      ok = rec("ok"),
+      warn = rec("warn"),
+      error = rec("error"),
+      info = rec("info"),
+    }
+    -- health.lua binds vim.health.* at load time: load it while the recorder is in place.
+    H.unload({ "gopath.health" })
+    local ok, err = pcall(function()
+      H.with_field(vim, "health", recorder, function()
+        require("gopath.health").check()
+      end)
+    end)
+    H.fresh("gopath.health")
+    if not ok then error(err, 0) end
+    return table.concat(lines, "\n")
+  end
+
+  H.check(
+    "health.check: finds the parser through core vim.treesitter, without nvim-treesitter",
+    function()
+      -- Neovim bundles the lua parser; nvim-treesitter is not on this runtimepath.
+      H.with_modules(
+        { ["nvim-treesitter"] = false, ["nvim-treesitter.parsers"] = false },
+        function()
+          local text = treesitter_section("lua")
+          H.match(text, "ok: Parser available for filetype: lua", "the bundled lua parser is found")
+          H.no_match(text, "No Tree%-sitter parser", "not reported as missing")
+          H.match(text, "uses core vim%.treesitter", "nvim-treesitter is not required")
+          H.no_match(text, "resolvers disabled", "nothing is claimed to be disabled")
+        end
+      )
+    end
+  )
+
+  H.check(
+    "health.check: ignores the nvim-treesitter rewrite's parsers module (no has_parser)",
+    function()
+      local touched = false
+      local rewrite = setmetatable({}, {
+        __index = function()
+          touched = true
+        end,
+      })
+      H.with_modules({ ["nvim-treesitter"] = {}, ["nvim-treesitter.parsers"] = rewrite }, function()
+        local text = treesitter_section("lua")
+        H.match(text, "ok: Parser available for filetype: lua")
+        H.match(text, "ok: nvim%-treesitter installed")
+      end)
+      H.falsy(touched, "nvim-treesitter.parsers is never consulted")
+    end
+  )
+
+  H.check("health.check: a filetype without any parser is reported as such", function()
+    local text = treesitter_section("gopath_no_such_parser")
+    H.match(text, "info: No Tree%-sitter parser for filetype 'gopath_no_such_parser'")
+  end)
+
+  H.check("health.check: a filetype mapped to another language uses that language", function()
+    -- Like core's `sh` -> bash mapping, but onto the bundled lua parser so the spec does not
+    -- depend on which other parsers this machine has. Core has no API to unregister a mapping,
+    -- so this one stays for the rest of the session: deliberately, on a filetype name nothing
+    -- else in the suite (or in Neovim) uses, so no later spec can observe it.
+    vim.treesitter.language.register("lua", "gopath_lua_alias")
+    local text = treesitter_section("gopath_lua_alias")
+    H.match(text, "ok: Parser available for filetype: gopath_lua_alias %(language 'lua'%)")
+  end)
+
+  ---Run the real `:checkhealth gopath` (as a user does) from a buffer of filetype `ft`, laid out
+  ---by `style`/`mods`, and return the lines of the resulting health:// buffer.
+  ---@param ft string
+  ---@param lines string[]  content of the buffer the command is run from
+  ---@param style 'float'|nil  value for vim.g.health.style
+  ---@param mods string|nil  command modifiers, e.g. "vertical"
+  ---@return string
+  local function real_checkhealth(ft, lines, style, mods)
+    local tab = vim.api.nvim_get_current_tabpage()
+    local win = vim.api.nvim_get_current_win()
+    local origin = H.buf(lines, { filetype = ft, listed = true })
+    local health_buf
+    local ok, err = pcall(function()
+      H.with_field(vim.g, "health", style and { style = style } or nil, function()
+        vim.cmd((mods and (mods .. " ") or "") .. "checkhealth gopath")
+        health_buf = vim.api.nvim_get_current_buf()
+      end)
+    end)
+    local text = health_buf
+        and table.concat(vim.api.nvim_buf_get_lines(health_buf, 0, -1, false), "\n")
+      or ""
+    if health_buf and health_buf ~= origin and vim.api.nvim_buf_is_valid(health_buf) then
+      vim.cmd("silent! bwipeout! " .. health_buf)
+    end
+    if vim.api.nvim_tabpage_is_valid(tab) then vim.api.nvim_set_current_tabpage(tab) end
+    if vim.api.nvim_win_is_valid(win) then vim.api.nvim_set_current_win(win) end
+    if vim.api.nvim_buf_is_valid(origin) then vim.cmd("silent! bwipeout! " .. origin) end
+    if not ok then error(err, 0) end
+    return text
+  end
+
+  for _, case in ipairs({
+    { label = "in a new tab (default)", lines = { "local x = 1" } },
+    { label = "in a split (:vertical)", lines = { "local x = 1" }, mods = "vertical" },
+    { label = "in a float (vim.g.health.style)", lines = { "local x = 1" }, style = "float" },
+  }) do
+    H.check(
+      "health: the real :checkhealth gopath checks the filetype it was run from, " .. case.label,
+      function()
+        local text = real_checkhealth("lua", case.lines, case.style, case.mods)
+        H.match(text, "Tree%-sitter", "the Tree-sitter section was rendered")
+        H.match(
+          text,
+          "Parser available for filetype: lua %(language 'lua'%)",
+          "the lua buffer's parser is reported, not the health:// buffer's empty filetype"
+        )
+        H.no_match(text, "No filetype to check", "a filetype was found")
+      end
+    )
+  end
+
+  H.check(
+    "health: the real :checkhealth gopath says so when there is no filetype to check",
+    function()
+      local text = real_checkhealth("", { "plain text" })
+      H.match(text, "No filetype to check a parser for", "no silent gap in the section")
+      H.no_match(text, "Parser available for filetype", "nothing is claimed")
+    end
+  )
+
   -- ── setup ──────────────────────────────────────────────────────────────────
 
   H.check("setup: merges the config and wires the bindings exactly once", function()

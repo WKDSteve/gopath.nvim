@@ -124,6 +124,29 @@ return function(H)
     H.same(TSP.captures_at_pos(0, 0), {}, "no parser, no captures")
   end)
 
+  H.check(
+    "captures_at_pos: a failing core call never falls back to nvim-treesitter.ts_utils",
+    function()
+      -- ts_utils is gone in the nvim-treesitter rewrite; core get_captures_at_pos exists since 0.9.
+      local reached = false
+      local ts_utils = {
+        get_captures_at_pos = function()
+          reached = true
+          return { "from-ts_utils" }
+        end,
+      }
+      H.buf({ "local x = 1" }, { filetype = "lua" })
+      H.with_modules({ ["nvim-treesitter.ts_utils"] = ts_utils }, function()
+        H.with_field(vim.treesitter, "get_captures_at_pos", function()
+          error("core failed", 0)
+        end, function()
+          H.same(TSP.captures_at_pos(0, 6), {}, "a core failure answers an empty list")
+        end)
+      end)
+      H.falsy(reached, "nvim-treesitter.ts_utils is not consulted")
+    end
+  )
+
   -- ── lsp ────────────────────────────────────────────────────────────────────
 
   ---Run `lsp.definition_at_cursor` against a canned server response.
