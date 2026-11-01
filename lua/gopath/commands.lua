@@ -28,10 +28,20 @@ end
 ---resolved a right-click's context (cursor OR a live visual selection, via
 ---`gopath.resolve_selection`) once, up front, and needs to open exactly
 ---that same result once an action is chosen from the menu.
+---
+---A result that names several targets (a task id in two vaults) is picked from
+---first, as gF does; a dismissed picker opens nothing.
 ---@param res GopathResult
 ---@param kind string|nil  "edit"|"window"|"vsplit"|"tab"|"explorer"|"filetree"
 function M.open_result(res, kind)
-  open_for_kind(res, kind or "edit")
+  kind = kind or "edit"
+  if res and res.alternatives and #res.alternatives > 1 then
+    require("gopath.resolvers.common.task_id").pick(res, function(choice)
+      if choice then open_for_kind(choice, kind) end
+    end)
+    return
+  end
+  open_for_kind(res, kind)
 end
 
 ---Open a resolved result, applying the fuzzy-alternate fallback when the

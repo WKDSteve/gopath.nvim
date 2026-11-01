@@ -48,7 +48,7 @@ stack-trace line all end in the same place: the right file, at the right line.
 > **[tasks.nvim](https://github.com/WKDSteve/tasks.nvim)** — a task id
 > (`lib.nvim/my-task`) in a to-do list, a commit message or a comment opens its
 > task file, open or finished; with gF and `:Gopath open`, several matches are
-> offered to pick from (other entry points take the first). Only an id a vault
+> offered to pick from (also by the context menu's Open and Reveal). Only an id a vault
 > knows counts, so a relative path is never taken for one
 > (`tasks = { enable, vaults }` or `tasks = false`, see
 > [All options](docs/configuration.md)).

@@ -110,6 +110,44 @@ return function(H)
     end)
   end)
 
+  H.check("open_result(): several task targets are picked from, the pick is opened", function()
+    local OPEN = require("gopath.open")
+    local first = { kind = "file", path = "/vault-a/t.md", exists = true }
+    local second = { kind = "file", path = "/vault-b/t.md", exists = true }
+    local res = vim.tbl_extend("force", first, { alternatives = { first, second } })
+    local opened = {}
+    local saved = OPEN.open
+    OPEN.open = function(r, kind)
+      opened[#opened + 1] = { res = r, kind = kind }
+    end
+    local ok, err = pcall(function()
+      H.with_modules({
+        ["gopath.resolvers.common.task_id"] = {
+          pick = function(r, on_choice)
+            H.eq(r, res)
+            on_choice(second)
+          end,
+        },
+      }, function()
+        require("gopath.commands").open_result(res, "edit")
+      end)
+      H.with_modules({
+        ["gopath.resolvers.common.task_id"] = {
+          pick = function(_, on_choice)
+            on_choice(nil)
+          end,
+        },
+      }, function()
+        require("gopath.commands").open_result(res, "explorer")
+      end)
+    end)
+    OPEN.open = saved
+    assert(ok, err)
+    H.eq(#opened, 1, "a dismissed picker opens nothing")
+    H.eq(opened[1].res, second)
+    H.eq(opened[1].kind, "edit")
+  end)
+
   H.check("items(): 'Open' opens exactly the resolved result via commands.open_result", function()
     local res = { kind = "file", path = "/found.lua", exists = true }
     local opened

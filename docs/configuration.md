@@ -35,7 +35,7 @@ require("gopath").setup({
   -- tasks.nvim (soft dependency: without it nothing happens and the id is read
   -- as a path). Only an id a vault knows counts. Several targets (an open and a
   -- finished task of one slug, the id in two vaults) are offered to pick from
-  -- by gF and `:Gopath open`; other entry points take the first. `tasks = false`
+  -- by gF, `:Gopath open` and the context menu's Open and Reveal. `tasks = false`
   -- turns it off like `enable = false`.
   tasks = {
     enable = true,
