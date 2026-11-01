@@ -138,6 +138,7 @@ local state = {
   capped = false, -- The last build stopped at `config.max_paths`
   unusable = false, -- The file on disk was read and rejected (unparseable, other roots)
   rebuild_asked = false, -- `search` already started the one rebuild this `unusable` verdict gets
+  saved = nil, -- { file, digest } of the index last written to (or confirmed on) disk
 }
 
 ---Whether the "path cache is capped" warning was already shown this session.
@@ -479,6 +480,18 @@ end
 ---@private
 ---@return boolean written
 function M._save_to_disk()
+  -- An index that is the one already on disk is not written again (a rebuild of an unchanged tree used to cost a
+  -- full JSON encode and write, ~76 ms, in the editor thread): only the age moves, as the mtime of the file
+  -- (`needs_refresh` and `load_from_disk` read it).
+  local digest = vim.fn.sha256(
+    table.concat(state.paths, "\n") .. "\0" .. table.concat(config.scan_roots or {}, "\n")
+  )
+  local file = config.cache_file
+  if state.saved and state.saved.file == file and state.saved.digest == digest then
+    local st = uv.fs_stat(file)
+    local now = os.time()
+    if st and st.type == "file" and uv.fs_utime(file, now, now) then return true end
+  end
   local data = {
     paths = state.paths,
     last_built = state.last_built,
@@ -488,6 +501,7 @@ function M._save_to_disk()
 
   local ok, err = require("lib.nvim.fs.json").write(config.cache_file, data)
   if ok then
+    state.saved = { file = file, digest = digest }
     prune_stale_cache_files()
   else
     LOG.error("Failed to write cache file: " .. tostring(err))
@@ -544,6 +558,11 @@ function M.load_from_disk()
   end
   state.paths = paths
   state.last_built = (type(data.last_built) == "number") and data.last_built or nil
+  -- an unchanged index is not rewritten (`_save_to_disk`): the age of the file says when it was last confirmed
+  local st = uv.fs_stat(config.cache_file)
+  if st and st.mtime and (not state.last_built or st.mtime.sec > state.last_built) then
+    state.last_built = st.mtime.sec
+  end
   state.unusable, state.rebuild_asked = false, false
   reindex()
 

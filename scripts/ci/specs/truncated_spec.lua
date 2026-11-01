@@ -376,6 +376,37 @@ return function(H)
     end
   )
 
+  -- A rebuild of an unchanged tree used to write the whole JSON again (~76 ms in the editor thread): the same index
+  -- is confirmed by touching the file, the age is the file's mtime.
+  H.check("_save_to_disk: an unchanged index is not written again, only its age moves", function()
+    local root = H.tmpdir()
+    H.write(root .. "/x.lua", { "" })
+    local file = H.tmpdir() .. "/gopath_fs_cache_aaaaaaaa.json"
+    -- (`setup` derives the file from the roots: override it afterwards, off the user's real cache directory)
+    cache.setup({ roots = { root } })
+    H.with_field(cache._get_config(), "cache_file", file, function()
+      local real_write = require("lib.nvim.fs.json").write
+      local writes = 0
+      H.with_modules({
+        ["lib.nvim.fs.json"] = {
+          read = require("lib.nvim.fs.json").read,
+          write = function(...)
+            writes = writes + 1
+            return real_write(...)
+          end,
+        },
+      }, function()
+        cache._save_to_disk()
+        H.eq(writes, 1, "the first save writes")
+        local old = os.time() - 7200
+        vim.uv.fs_utime(file, old, old)
+        H.truthy(cache._save_to_disk(), "the second save succeeds")
+        H.eq(writes, 1, "and writes nothing: the index is the one on disk")
+        H.truthy(vim.uv.fs_stat(file).mtime.sec > old + 3600, "but the age moved")
+      end)
+    end)
+  end)
+
   -- Every distinct scan-roots set owns its own cache file (PERF-46), so every new
   -- working directory used to leave one behind for good: 131 files, 564 MB.
   H.check("_save_to_disk: a cache file nobody rewrote for two weeks is pruned", function()
