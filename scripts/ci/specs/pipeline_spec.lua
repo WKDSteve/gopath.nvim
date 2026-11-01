@@ -415,4 +415,12 @@ return function(H)
     H.is_nil(none, "an empty line has no <cfile> either")
     H.eq(no_err, "no-match")
   end)
+
+  H.check("resolve: the pre-language stages are one ordered list the probe can report", function()
+    H.same(
+      require("gopath.resolve").stage_names(),
+      { "help", "url_strict", "env_path", "task_id", "filetoken", "linepath" },
+      "the order the header documents"
+    )
+  end)
 end

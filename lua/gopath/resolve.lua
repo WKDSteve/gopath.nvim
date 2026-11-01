@@ -22,6 +22,112 @@ local LOG = require("gopath.util.log")
 
 local M = {}
 
+---@class Gopath.Stage
+---@field name string  Reported by `M.stage_names()` and in debug logs
+---@field enabled? fun(cfg: table): boolean  Gate on the user's config (default: on)
+---@field run fun(cfg: table, held: { fallback: GopathResult|nil }): GopathResult|nil
+
+--- Call `modname.fn()` when the module loads; a module that fails to load is
+--- skipped (the stage then finds nothing).
+---@param modname string
+---@param fn string
+---@return GopathResult|nil
+local function optional(modname, fn)
+  local ok, mod = pcall(require, modname)
+  if ok then return mod[fn]() end
+end
+
+--- Call `modname.resolve()` with every failure (load or run) swallowed.
+---@param modname string
+---@return GopathResult|nil
+local function guarded(modname)
+  local ok, res = pcall(function()
+    return require(modname).resolve()
+  end)
+  if ok then return res end
+end
+
+--- The stages that run before the language pipeline, in order; the first one
+--- to answer wins. A stage that needs the one before it to have failed (the
+--- loose URL, the filetoken fallback) is not here: it runs after the pipeline.
+---@type Gopath.Stage[]
+local STAGES = {
+  -- 1. Help resolver (all filetypes, very cheap)
+  {
+    name = "help",
+    run = function()
+      return require("gopath.resolvers.common.help").resolve()
+    end,
+  },
+  -- 1.5 URL with an explicit scheme ("https://…", "mailto:…") or a "www."
+  --     prefix. Nothing on disk is spelled like that, so this may run before
+  --     every file resolver — which it must: filetoken/linepath would otherwise
+  --     turn the URL into "<cwd>/https:/…" and offer to create that file.
+  {
+    name = "url_strict",
+    run = function()
+      return optional("gopath.resolvers.common.url", "resolve_strict")
+    end,
+  },
+  -- 2. Environment variable path ($VAR/foo.md, ${VAR}/foo.md).
+  --    Runs before filetoken so that the $ prefix is caught here and
+  --    filetoken never receives a raw env-var token it cannot handle.
+  {
+    name = "env_path",
+    enabled = function(cfg)
+      local ev_cfg = cfg.env_variable_resolution
+      return not ev_cfg or ev_cfg.enable ~= false
+    end,
+    run = function()
+      return guarded("gopath.resolvers.common.env_path")
+    end,
+  },
+  -- 2.5 Task id (`lib.nvim/alpha`), resolved by tasks.nvim (soft dependency).
+  --     Before filetoken, which would otherwise read the id as a relative path
+  --     that does not exist and offer to create it. Safe to run this early:
+  --     tasks.nvim answers only for an id whose area and task exist.
+  {
+    name = "task_id",
+    run = function()
+      return guarded("gopath.resolvers.common.task_id")
+    end,
+  },
+  -- 3. Filetoken: high-confidence existing hit returned immediately.
+  --    Low-confidence or non-existent result held so Phase 3.5/4 can improve on it.
+  {
+    name = "filetoken",
+    run = function(_, held)
+      local ftok = require("gopath.resolvers.common.filetoken").resolve()
+      if ftok then
+        if ftok.exists and (ftok.confidence or 0) >= 0.6 then return ftok end
+        held.fallback = ftok
+      end
+    end,
+  },
+  -- 3.5. Whole-line path extraction (linepath / pathfinder strategy).
+  --      Runs only when linepath.cascade = true (default).
+  {
+    name = "linepath",
+    enabled = function(cfg)
+      local lp_cfg = cfg.linepath
+      return not lp_cfg or (lp_cfg.enable ~= false and lp_cfg.cascade ~= false)
+    end,
+    run = function()
+      return optional("gopath.resolvers.common.linepath", "resolve")
+    end,
+  },
+}
+
+---Names of the stages that run before the language pipeline, in order.
+---@return string[]
+function M.stage_names()
+  local out = {}
+  for i, st in ipairs(STAGES) do
+    out[i] = st.name
+  end
+  return out
+end
+
 ---Resolve the entity under the cursor using configured providers.
 ---
 ---`GopathResolveOpts` is declared once, in `@types/resolvers.lua`; the copy
@@ -33,73 +139,17 @@ function M.resolve_at_cursor(opts)
   local cfg = C.get()
   local ft = vim.bo.filetype or "text"
 
-  -- 1. Help resolver (all filetypes, very cheap)
-  do
-    local help = require("gopath.resolvers.common.help").resolve()
-    if help then return help, nil end
-  end
-
-  -- 1.5 URL with an explicit scheme ("https://…", "mailto:…") or a "www."
-  --     prefix. Nothing on disk is spelled like that, so this may run before
-  --     every file resolver — which it must: filetoken/linepath would otherwise
-  --     turn the URL into "<cwd>/https:/…" and offer to create that file.
-  do
-    local ok, url_mod = pcall(require, "gopath.resolvers.common.url")
-    if ok then
-      local url = url_mod.resolve_strict()
-      if url then return url, nil end
-    end
-  end
-
-  -- 2. Environment variable path ($VAR/foo.md, ${VAR}/foo.md).
-  --    Runs before filetoken so that the $ prefix is caught here and
-  --    filetoken never receives a raw env-var token it cannot handle.
-  do
-    local ev_cfg = cfg.env_variable_resolution
-    if not ev_cfg or ev_cfg.enable ~= false then
-      local ok, env = pcall(function()
-        return require("gopath.resolvers.common.env_path").resolve()
-      end)
-      if ok and env then return env, nil end
-    end
-  end
-
-  -- 2.5 Task id (`lib.nvim/alpha`), resolved by tasks.nvim (soft dependency).
-  --     Before filetoken, which would otherwise read the id as a relative path
-  --     that does not exist and offer to create it. Safe to run this early:
-  --     tasks.nvim answers only for an id whose area and task exist.
-  do
-    local ok, task = pcall(function()
-      return require("gopath.resolvers.common.task_id").resolve()
-    end)
-    if ok and task then return task, nil end
-  end
-
-  -- 3. Filetoken: high-confidence existing hit returned immediately.
-  --    Low-confidence or non-existent result held so Phase 3.5/4 can improve on it.
-  local filetoken_fallback = nil
-  do
-    local ftok = require("gopath.resolvers.common.filetoken").resolve()
-    if ftok then
-      if ftok.exists and (ftok.confidence or 0) >= 0.6 then return ftok, nil end
-      filetoken_fallback = ftok
-    end
-  end
-
-  -- 3.5. Whole-line path extraction (linepath / pathfinder strategy).
-  --      Runs only when linepath.cascade = true (default).
-  do
-    local lp_cfg = cfg.linepath
-    if not lp_cfg or lp_cfg.enable ~= false then
-      if not lp_cfg or lp_cfg.cascade ~= false then
-        local ok, lp_mod = pcall(require, "gopath.resolvers.common.linepath")
-        if ok then
-          local lp = lp_mod.resolve()
-          if lp then return lp, nil end
-        end
+  local held = { fallback = nil }
+  for _, stage in ipairs(STAGES) do
+    if not stage.enabled or stage.enabled(cfg) then
+      local res = stage.run(cfg, held)
+      if res then
+        LOG.debug("stage matched: " .. stage.name)
+        return res, nil
       end
     end
   end
+  local filetoken_fallback = held.fallback
 
   -- 4. Language-specific pipeline
   local lang = cfg.languages[ft]
