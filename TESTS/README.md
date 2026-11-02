@@ -167,7 +167,7 @@ and the 8 in `headless_tests.lua`.
 | `url_spec` | `util/url.lua` (strict vs. loose detection, the drive-letter guard, normalisation, cursor extraction) and `resolvers/common/url.lua` (both passes, the `enable`/`bare_hosts` gates, configured schemes/TLDs) |
 | `env_shorten_spec` | `env_shorten.lua`: all four root forms, every negative case from `TESTS/06`, multi-pair ordering, the buffer-facing `:GopathToReposDir`/`:GopathToNvimDir` (resolver functions, the longest-dir-wins rule, the "nothing configured" warning), a visual range shortening just the selection (literal match first, then buffer-relative), a relative Markdown-link path resolved against the buffer's directory and rewritten only when it lands under a configured root, and a URL (in a link or directly selected) never mistaken for one -- regression: used to mangle a URL into `$VAR/.../https:/...` when the buffer itself lived under the configured root |
 | `external_spec` | `external/`: the extension/URL detector, `should_open_externally`, the opener and revealer argv chains through all their fallback layers, and the PDF mode chooser |
-| `create_open_spec` | `create.lua` (the offer in every branch — including a resolved path that IS a directory — the nearest-ancestor walk, filetree.nvim, ui.kit vs. `vim.ui.select`) and `open/init.lua` (URL / explorer / external / missing / placement / jump / escaping) |
+| `create_open_spec` | `create.lua` (the offer in every branch — including a resolved path that IS a directory — the lib.nvim `create_on_missing` dialog answered through the kit dialog hook, filetree.nvim, the directory prompt via ui.kit vs. `vim.ui.select`) and `open/init.lua` (URL / explorer / external / missing / placement / jump / escaping) |
 | `tailsearch_spec` | `resolvers/common/tailsearch.lua`: `sanitize`, `suffix_candidates`, `pick_best`, `guess_roots`, `find_by_tail`, `cache_lookup`, and all four resolution entry points including the picker flow |
 | `truncated_spec` | `truncated/cache.lua` (scan, exclusions, depth, both search strategies, persistence validation, staleness, roots, the refresh timer) and `truncated/finder.lua` (the async walk and the `fd`/`rg` argv) |
 | `lang_resolvers_spec` | `resolvers/common/lang_helper.lua` and all eight language resolvers — python, go, rust, c/cpp, javascript/typescript, csharp, zig, java — each against a real miniature project |
@@ -248,7 +248,9 @@ silently depends on the very thing it is a fallback for — have since been
   now, at load time, right next to `create_entry`; a checkout missing both
   submodules gets `touch()`'s normal `(false, err)` return — and gopath's own
   "Could not create file: …" wording — instead of a raw "module not found"
-  escaping the ui.select callback.
+  escaping the ui.select callback. (Superseded: the missing-path dialog is
+  lib.nvim's `ui.kit.create_on_missing` now, so lib.nvim's `fs.create_entry`
+  is a plain require and the `write.to_file` fallback is gone.)
 * `health.lua`'s `check_lib_nvim()`'s last line ended the whole check with
   `require("lib.nvim.bindings.usercmd.composer").checkhealth("Gopath")`,
   unguarded — so on the one machine the "lib.nvim not found" branch above it

@@ -245,8 +245,7 @@ When resolution yields a path that does not exist, `commands` tries, in order:
    Ex command line, where a gopath mode like `window` or `tab` is not a valid
    command (`E492`).
 2. **Create on missing** — if that fails too, `gopath.open` asks (button
-   dialog via ui.nvim's `ui.kit.confirm`, falling back to `vim.ui.select`
-   when ui.nvim is absent) whether to create the file. See
+   dialog, lib.nvim's `ui.kit.create_on_missing`) whether to create the file. See
    [`gopath.create`](../lua/gopath/create.lua) and the `create_on_missing`
    config block. Opt-out with `create_on_missing.enable = false`, or skip the
    prompt with `confirm = false`. The dedicated `gC` / `:GopathCheck`

@@ -142,7 +142,7 @@ require("gopath").setup({
 
   -- Offer to create a resolved-but-missing file instead of just erroring
   -- (gP/g|/g\/g}). `gC` / :GopathCheck always offer, regardless of `enable`.
-  -- Dialog: ui.nvim's ui.kit.confirm, falling back to vim.ui.select.
+  -- Dialog: lib.nvim's ui.kit.create_on_missing.
   create_on_missing = {
     enable  = true,
     confirm = true,  -- false = create silently, no dialog

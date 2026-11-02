@@ -13,14 +13,15 @@
 ---      (asks for a name, then creates it there) and, when filetree.nvim is
 ---      installed, "Open in filetree" for that same directory.
 ---   2. The resolved path does not exist, but has an existing ANCESTOR directory:
----      the dialog offers "Create file" (the resolved path itself) and, when
----      filetree.nvim is installed, "Open in filetree" for the nearest existing
----      ancestor — instead of silently `:edit`-ing a path that used to dump you
----      into netrw with no warning.
+---      the dialog (lib.nvim's `ui.kit.create_on_missing`) offers Create (the
+---      resolved path itself, parents included) and, when filetree.nvim is
+---      installed, "Open in filetree" for the nearest existing ancestor —
+---      instead of silently `:edit`-ing a path that used to dump you into
+---      netrw with no warning.
 ---
---- The confirm dialog itself prefers ui.nvim's `ui.kit.confirm` (declared
---- dependency, same soft-fallback convention as `gopath.util.cross` /
---- `gopath.util.log`); when ui.nvim is missing it falls back to `vim.ui.select`.
+--- The directory prompt (case 1) uses ui.nvim's `ui.kit.confirm` when present
+--- (soft dependency, same convention as `gopath.util.cross` / `gopath.util.log`)
+--- and falls back to `vim.ui.select`.
 
 local LOG = require("gopath.util.log")
 local CROSS = require("gopath.util.cross")
@@ -29,108 +30,33 @@ local FILETREE_UTIL = require("gopath.util.filetree")
 
 local M = {}
 
-local uv = vim.uv or vim.loop
+local create_entry = require("lib.nvim.fs.create_entry")
+local create_on_missing = require("lib.nvim.ui.kit.create_on_missing")
 
----@type fun(parent_dir: string, name: string): boolean, ("file"|"directory")?, string?
----the lib.nvim.fs.create_entry function, or nil when this lib.nvim checkout
----predates it
-local create_entry
-
----@type fun(path: string, content: string): boolean, string?
----the lib.nvim.fs.write.to_file function, used when `create_entry` is
----missing from an older lib.nvim checkout; nil only when lib.nvim itself (or
----both of these submodules) is unavailable
-local write_to_file
-
--- lib.nvim is gopath's hard dependency (see bindings/keymaps.lua) -- if it
--- were genuinely absent, setup() would already have failed before this
--- module is ever reached. What CAN legitimately be missing is a single
--- submodule on an older checkout (LUA-05): `fs.create_entry` is preferred,
--- `fs.write.to_file` is the fallback for a checkout that predates it, and
--- only a checkout missing *both* leaves file creation unavailable.
-do
-  local ok, mod = pcall(require, "lib.nvim.fs.create_entry")
-  if ok then
-    create_entry = mod
-  else
-    local ok2, mod2 = pcall(require, "lib.nvim.fs.write.to_file")
-    if ok2 then
-      write_to_file = mod2
-      vim.schedule(function()
-        LOG.warn(
-          "lib.nvim is missing 'fs.create_entry' (older checkout?) — "
-            .. "falling back to 'fs.write.to_file' for file creation."
-        )
-      end)
-    else
-      vim.schedule(function()
-        LOG.error(
-          "lib.nvim not found, or too old to provide 'fs.create_entry' / "
-            .. "'fs.write.to_file' — file creation is unavailable."
-        )
-      end)
-    end
-  end
-end
+-- lib.nvim is gopath's hard dependency (see bindings/keymaps.lua); its
+-- `fs.create_entry` backs the silent/no-dialog creation below, and
+-- `ui.kit.create_on_missing` owns the dialog for a missing path.
 
 -- ── File creation ────────────────────────────────────────────────────────────
 
----Create empty file at `path`, creating parent directories as needed.
+---Create an empty file at `path` WITHOUT asking (`confirm = false`, and the
+---explicit "Create file in this folder" name prompt); parent directories are
+---created as needed. A missing path that needs asking goes through
+---`ui.kit.create_on_missing` instead (see `M.offer`).
 ---@internal
 ---@param path string
 ---@return boolean ok
 ---@return string|nil err
 local function touch(path)
   local native = CROSS.to_native(path)
-
-  if create_entry then
-    local dir = vim.fn.fnamemodify(native, ":h")
-    local name = vim.fn.fnamemodify(native, ":t")
-    local ok, _, path_or_err = create_entry(dir, name)
-    if not ok then return false, path_or_err end
-    -- The path searches cache directory listings; a file created now would
-    -- otherwise stay invisible to the next lookup until those caches expire.
-    PATH.invalidate_caches()
-    return true, nil
-  end
-
-  if not write_to_file then return false, "lib.nvim not available — cannot create files" end
-
-  local ok_write, err = write_to_file(native, "")
-  if not ok_write then return false, err or ("could not open " .. native) end
+  local dir = vim.fn.fnamemodify(native, ":h")
+  local name = vim.fn.fnamemodify(native, ":t")
+  local ok, _, path_or_err = create_entry(dir, name)
+  if not ok then return false, path_or_err end
+  -- The path searches cache directory listings; a file created now would
+  -- otherwise stay invisible to the next lookup until those caches expire.
   PATH.invalidate_caches()
   return true, nil
-end
-
--- ── Nearest existing ancestor directory ──────────────────────────────────────
-
----Find the nearest existing ancestor directory of `path` (walking from the
----full path up to its root segment). Pure query — does not open anything.
----@internal
----@param path string
----@return string|nil dir  absolute, normalized
-local function find_nearest_existing_dir(path)
-  if not path or path == "" then return nil end
-  local norm = (vim.fs.normalize and vim.fs.normalize(path)) or path
-  local segs = {}
-  for s in norm:gmatch("[^/\\]+") do
-    segs[#segs + 1] = s
-  end
-
-  for i = #segs, 1, -1 do
-    local candidate = table.concat(segs, "/", 1, i)
-    local cwd = (uv.cwd and uv.cwd()) or vim.fn.getcwd()
-    local try_paths = { candidate, "/" .. candidate, cwd .. "/" .. candidate }
-
-    for _, p in ipairs(try_paths) do
-      local ok_norm, pn = pcall(vim.fs.normalize, p)
-      if ok_norm then
-        local st = uv.fs_stat(pn)
-        if st and st.type == "directory" then return pn end
-      end
-    end
-  end
-  return nil
 end
 
 -- ── filetree.nvim (soft dependency) ──────────────────────────────────────────
@@ -138,12 +64,12 @@ end
 ---Set cwd to `dir` and hand it to filetree.nvim's tree (rooted + focused there).
 ---@internal
 ---@param dir string
----@return nil
+---@return boolean opened
 local function open_in_filetree(dir)
   local adapter = FILETREE_UTIL.adapter()
   if not adapter then
     LOG.warn("filetree.nvim not available — could not open: " .. dir)
-    return
+    return false
   end
   local ok_cd = pcall(vim.cmd.cd, vim.fn.fnameescape(dir))
   if not ok_cd then LOG.warn("Could not set cwd to: " .. dir) end
@@ -159,6 +85,7 @@ local function open_in_filetree(dir)
   else
     LOG.error("Could not open in filetree: " .. dir)
   end
+  return opened
 end
 
 -- ── Confirm dialog (ui.kit, soft dependency) ────────────────────────
@@ -218,7 +145,6 @@ end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
 
-local CREATE = "Create file"
 local CREATE_HERE = "Create file in this folder"
 local FILETREE = "Open in filetree"
 local CANCEL = "Cancel"
@@ -326,27 +252,24 @@ function M.offer(res, on_created, opts)
     return
   end
 
-  local nearest_dir = find_nearest_existing_dir(res.path)
-  local choices = { CREATE }
-  if nearest_dir and FILETREE_UTIL.adapter() then choices[#choices + 1] = FILETREE end
-  choices[#choices + 1] = CANCEL
-
-  ask("gopath: '" .. tostring(res.path) .. "' not found", choices, function(choice)
-    if choice == CREATE then
-      local ok, err = touch(res.path)
-      if not ok then
-        LOG.error("Could not create file: " .. tostring(err))
-        return
-      end
+  -- The dialog (Create with parents / Open in filetree / Cancel) is lib.nvim's
+  -- `ui.kit.create_on_missing`; gopath only says what happens afterwards.
+  create_on_missing.open({
+    path = res.path,
+    title = "gopath: file not found",
+    open = function()
+      PATH.invalidate_caches()
       res.exists = true
       LOG.info("Created: " .. tostring(res.path))
       on_created(res)
-    elseif choice == FILETREE and nearest_dir then
-      open_in_filetree(nearest_dir)
-    else
-      LOG.warn("File not created: " .. tostring(res.path))
-    end
-  end)
+    end,
+    -- Reveal through gopath's own adapter (sets cwd, roots the tree); no
+    -- button when filetree.nvim is not installed.
+    filetree = FILETREE_UTIL.adapter() and open_in_filetree or false,
+    on_done = function(result)
+      if result.action == "cancelled" then LOG.warn("File not created: " .. tostring(res.path)) end
+    end,
+  })
 end
 
 return M

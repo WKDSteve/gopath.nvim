@@ -14,6 +14,33 @@ return function(H)
 
   local create = require("gopath.create")
 
+  ---Answer lib.nvim's modal dialogs (`kit.confirm`, which backs
+  ---`ui.kit.create_on_missing`) without a window: `answer` is a button label or
+  ---nil (dismissed). Runs `fn`, then lets the scheduled answer be delivered.
+  ---@param answer string|nil
+  ---@param fn fun()
+  ---@return { question: string, choices: string[], title: string }[] asked
+  local function with_dialog(answer, fn)
+    local kit = require("lib.nvim.ui.kit")
+    local asked = {}
+    kit.set_dialog_hook(function(kind, opts)
+      if kind ~= "confirm" then return false end
+      asked[#asked + 1] = { question = opts.question, choices = opts.choices, title = opts.title }
+      return true, answer
+    end)
+    local ok, err = pcall(fn)
+    local flushed = false
+    vim.schedule(function()
+      flushed = true
+    end)
+    vim.wait(1000, function()
+      return flushed
+    end, 5)
+    kit.set_dialog_hook(nil)
+    if not ok then error(err, 0) end
+    return asked
+  end
+
   H.check("offer: create_on_missing.enable = false reports instead of asking", function()
     H.config_sandbox(function(c)
       c.setup({ create_on_missing = { enable = false } })
@@ -84,18 +111,18 @@ return function(H)
       local dir = H.tmpdir()
       c.setup({ create_on_missing = { enable = true, confirm = true } })
 
-      local calls, called
+      local asked, called
       local notes = H.capture_notify(function()
-        calls = H.with_ui_select("Cancel", function()
+        asked = with_dialog("Cancel", function()
           create.offer({ path = dir .. "/declined.lua", exists = false }, function()
             called = true
           end)
         end)
       end)
 
-      H.eq(#calls, 1, "the user was asked once")
-      H.same(calls[1].items, { "Create file", "Cancel" }, "no filetree entry without filetree.nvim")
-      H.match(calls[1].opts.prompt, "not found", "the prompt names the problem")
+      H.eq(#asked, 1, "the user was asked once")
+      H.same(asked[1].choices, { "Create", "Cancel" }, "no filetree entry without filetree.nvim")
+      H.match(asked[1].question, "does not exist", "the question names the problem")
       H.falsy(called, "nothing was opened")
       H.eq(vim.fn.filereadable(dir .. "/declined.lua"), 0, "and nothing was written")
       H.match(H.notify_text(notes), "File not created")
@@ -108,7 +135,7 @@ return function(H)
       c.setup({ create_on_missing = { enable = true, confirm = true } })
       local called
       H.capture_notify(function()
-        H.with_ui_select(nil, function()
+        with_dialog(nil, function()
           create.offer({ path = dir .. "/dismissed.lua", exists = false }, function()
             called = true
           end)
@@ -119,21 +146,39 @@ return function(H)
     end)
   end)
 
-  H.check("offer: choosing Create writes the file and opens it", function()
+  H.check("offer: choosing Create writes the file (parents included) and opens it", function()
     H.config_sandbox(function(c)
       local dir = H.tmpdir()
       c.setup({ create_on_missing = { enable = true, confirm = true } })
       local got
       H.capture_notify(function()
-        H.with_ui_select("Create file", function()
-          create.offer({ path = dir .. "/accepted.lua", exists = false }, function(r)
+        with_dialog("Create", function()
+          create.offer({ path = dir .. "/deep/accepted.lua", exists = false }, function(r)
             got = r
           end)
         end)
       end)
       H.truthy(got, "on_created ran")
       H.eq(got.exists, true)
-      H.eq(vim.fn.filereadable(dir .. "/accepted.lua"), 1)
+      H.eq(vim.fn.filereadable(dir .. "/deep/accepted.lua"), 1)
+    end)
+  end)
+
+  H.check("offer: a failing Create is reported and on_created stays unreached", function()
+    H.config_sandbox(function(c)
+      local dir = H.tmpdir()
+      H.write(dir .. "/blocker", { "not a directory" })
+      c.setup({ create_on_missing = { enable = true, confirm = true } })
+      local called
+      local notes = H.capture_notify(function()
+        with_dialog("Create", function()
+          create.offer({ path = dir .. "/blocker/child.lua", exists = false }, function()
+            called = true
+          end)
+        end)
+      end)
+      H.falsy(called)
+      H.match(H.notify_text(notes), "could not create")
     end)
   end)
 
@@ -153,13 +198,13 @@ return function(H)
           end,
         },
       }, function()
-        local calls
+        local asked
         H.capture_notify(function()
-          calls = H.with_ui_select("Cancel", function()
+          asked = with_dialog("Cancel", function()
             create.offer({ path = dir .. "/x/y.lua", exists = false }, function() end)
           end)
         end)
-        H.same(calls[1].items, { "Create file", "Cancel" }, "setup() not called yet")
+        H.same(asked[1].choices, { "Create", "Cancel" }, "setup() not called yet")
       end)
 
       -- Installed and set up: three choices.
@@ -179,15 +224,15 @@ return function(H)
           end,
         },
       }, function()
-        local calls
+        local asked
         H.capture_notify(function()
-          calls = H.with_ui_select("Open in filetree", function()
+          asked = with_dialog("Open in filetree", function()
             create.offer({ path = dir .. "/x/y.lua", exists = false }, function()
               error("on_created must not run for the filetree choice")
             end)
           end)
         end)
-        H.same(calls[1].items, { "Create file", "Open in filetree", "Cancel" })
+        H.same(asked[1].choices, { "Create", "Open in filetree", "Cancel" })
         H.eq(#rooted, 1, "the directory was handed to filetree")
         H.match(
           rooted[1],
@@ -224,7 +269,7 @@ return function(H)
         },
       }, function()
         H.capture_notify(function()
-          H.with_ui_select("Open in filetree", function()
+          with_dialog("Open in filetree", function()
             create.offer({ path = dir .. "/gone/y.lua", exists = false }, function() end)
           end)
         end)
@@ -236,87 +281,34 @@ return function(H)
   end)
 
   H.check(
-    "offer: ui.kit.confirm is preferred over vim.ui.select when ui.nvim is installed",
+    "offer: the directory prompt prefers ui.kit.confirm over vim.ui.select when ui.nvim is installed",
     function()
       H.config_sandbox(function(c)
         local dir = H.tmpdir()
-        c.setup({ create_on_missing = { enable = true, confirm = true } })
+        c.setup({})
         local asked
         H.with_modules({
           ["ui.kit"] = {
             confirm = function(spec)
               asked = spec
-              spec.on_answer("Create file")
+              spec.on_answer("Cancel")
             end,
           },
         }, function()
           local fresh = require("gopath.create")
-          local created
           H.capture_notify(function()
             H.with_ui_select(nil, function()
-              fresh.offer({ path = dir .. "/viakit.lua", exists = false }, function()
-                created = true
-              end)
+              fresh.offer({ path = dir, exists = false }, function() end)
             end)
           end)
           H.truthy(asked, "ui.kit.confirm was used")
-          H.same(asked.choices, { "Create file", "Cancel" })
-          H.match(asked.question, "not found")
-          H.truthy(created, "and its answer drove the flow")
+          H.same(asked.choices, { "Create file in this folder", "Cancel" })
+          H.match(asked.question, "is a directory")
         end, { unload = { "gopath.create" } })
         H.fresh("gopath.create")
       end)
     end
   )
-
-  H.check(
-    "offer: reports gopath's own error when lib.nvim has neither creation submodule (LUA-01)",
-    function()
-      -- `create_entry` and its `fs.write.to_file` fallback are both pcall'd at
-      -- load time now, so a checkout missing both degrades to touch()'s normal
-      -- (false, err) return instead of an unguarded require throwing out of the
-      -- ui.select callback.
-      H.config_sandbox(function(c)
-        local dir = H.tmpdir()
-        c.setup({ create_on_missing = { enable = true, confirm = false } })
-        H.with_modules({
-          ["lib.nvim.fs.create_entry"] = false,
-          ["lib.nvim.fs.write.to_file"] = false,
-        }, function()
-          local fresh = require("gopath.create")
-          local notes = H.capture_notify(function()
-            fresh.offer({ path = dir .. "/nolib.lua", exists = false }, function() end)
-          end)
-          H.match(
-            H.notify_text(notes),
-            "Could not create file",
-            "gopath's own wording, not a raw error"
-          )
-          H.eq(vim.fn.filereadable(dir .. "/nolib.lua"), 0, "nothing was created")
-        end, { unload = { "gopath.create" } })
-        H.fresh("gopath.create")
-      end)
-    end
-  )
-
-  H.check("offer: the write-to_file fallback path works when lib.nvim IS present", function()
-    H.config_sandbox(function(c)
-      local dir = H.tmpdir()
-      c.setup({ create_on_missing = { enable = true, confirm = false } })
-      H.with_modules({ ["lib.nvim.fs.create_entry"] = false }, function()
-        local fresh = require("gopath.create")
-        local created
-        H.capture_notify(function()
-          fresh.offer({ path = dir .. "/viawrite.lua", exists = false }, function()
-            created = true
-          end)
-        end)
-        H.truthy(created, "on_created ran")
-        H.eq(vim.fn.filereadable(dir .. "/viawrite.lua"), 1, "and the file exists")
-      end, { unload = { "gopath.create" } })
-      H.fresh("gopath.create")
-    end)
-  end)
 
   -- ── gopath.create: res.path is itself an existing directory ───────────────
 

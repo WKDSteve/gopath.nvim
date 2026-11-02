@@ -176,10 +176,10 @@ local function check_lib_nvim()
     )
   end
   if require_ok("ui.kit") then
-    ok_s("ui.nvim installed — create-on-missing dialog uses ui.kit.confirm")
+    ok_s("ui.nvim installed — themed pickers and the directory prompt use ui.kit")
   else
     info_s(
-      "ui.nvim not installed — create-on-missing dialog falls back to vim.ui.select\n"
+      "ui.nvim not installed — pickers and the directory prompt fall back to vim.ui.select\n"
         .. "  install WKDSteve/ui.nvim for the themed dialog"
     )
   end
@@ -387,7 +387,7 @@ local function check_config()
     info_s(
       "  confirm = "
         .. tostring(com.confirm ~= false)
-        .. "  (dialog: ui.nvim ui.kit.confirm / vim.ui.select — see below)"
+        .. "  (dialog: lib.nvim ui.kit.create_on_missing)"
     )
   else
     info_s("create_on_missing.enable = false — 'gC'/:GopathCheck still offers to create")

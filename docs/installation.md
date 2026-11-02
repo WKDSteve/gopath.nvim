@@ -27,7 +27,7 @@ Optional, each detected at runtime and degrading to nothing when absent:
 | A Tree-sitter parser for the filetype | Strongly recommended — the Treesitter phase reads the node under the cursor instead of guessing at the line. gopath only uses Neovim's built-in `vim.treesitter`; [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) is merely one way to install parsers Neovim does not bundle (run `:checkhealth gopath` from a buffer of that filetype to see whether it has one) |
 | An LSP client | The first and most certain phase of the pipeline |
 | `fd` / `fdfind` / `rg` | Speed up resolving a truncated path tail; without them the cache is built by walking |
-| [ui.nvim](https://github.com/WKDSteve/ui.nvim) | `ui.kit.confirm`/`ui.kit.select` back the create-on-missing dialog and the fuzzy-alternate/multi-match pickers -- falling back to `vim.ui.select` when absent |
+| [ui.nvim](https://github.com/WKDSteve/ui.nvim) | `ui.kit.confirm`/`ui.kit.select` back the directory prompt and the fuzzy-alternate/multi-match pickers -- falling back to `vim.ui.select` when absent (the create-on-missing dialog itself ships with lib.nvim) |
 
 The CLI tools are declared in [docs/install.json](install.json) and read
 by lib.nvim's
@@ -69,7 +69,7 @@ plugin's own spec with `deps_popup = false`, or globally with
 > internally, OS-native paths when opening files) — that integration still
 > degrades to built-in fallbacks if lib.nvim is somehow missing, but
 > `:Gopath` itself will fail to register without it. The `ui.kit.confirm`
-> create-on-missing dialog and the fuzzy-alternate/multi-match pickers are a
+> directory prompt and the fuzzy-alternate/multi-match pickers are a
 > separate, optional dependency on [ui.nvim](https://github.com/WKDSteve/ui.nvim),
 > falling back to `vim.ui.select` when it is absent.
 
@@ -96,7 +96,7 @@ use {
 styling — those integrations fall back to built-ins if lib.nvim is somehow
 missing, even though the `:Gopath` command layer itself will not register
 without it (see [Requirements](#requirements)). The `ui.kit.confirm`
-create-on-missing dialog and the fuzzy-alternate/multi-match pickers come
+directory prompt and the fuzzy-alternate/multi-match pickers come
 from [ui.nvim](https://github.com/WKDSteve/ui.nvim) instead, falling
 back to `vim.ui.select` when it is absent.
 
