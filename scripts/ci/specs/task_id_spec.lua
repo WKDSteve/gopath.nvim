@@ -174,6 +174,93 @@ return function(H)
     H.fresh("gopath.commands")
   end)
 
+  H.check("task id: a group symbol opens its explanation, labelled as a group", function()
+    local file = H.tmpdir() .. "/perf.md"
+    H.write(file, { "# Perf", "", "explained here" })
+    local group = {
+      kind = "group",
+      id = "group/perf",
+      path = file,
+      line = 3,
+      title = "Perf",
+      root = "/vault",
+    }
+    H.with_modules({ ["tasks_nvim.resolve"] = fake_tasks({ group }, {}) }, function()
+      TASK._reset()
+      H.line_at("see [[group/perf]] for it", "perf", { filetype = "markdown" })
+      local r = TASK.resolve()
+      H.truthy(r, "a result for the group")
+      H.eq(r.path, (file:gsub("\\", "/")))
+      H.same(r.range, { line = 3, col = 1 }, "the line of the explanation")
+      H.eq(r.task.kind, "group")
+      H.is_nil(r.alternatives, "one target, no choice")
+    end)
+    TASK._reset()
+  end)
+
+  H.check("task id: same-looking targets are told apart by date and by path", function()
+    local calls = {}
+    local function t(path, kind, date)
+      local x = target(path, kind, "C:" .. string.char(92) .. "vault")
+      x.date = date
+      return x
+    end
+    local targets = {
+      t("C:/vault/lib.nvim/ROADMAP/tasks/alpha.md", "task"),
+      t("C:/vault/lib.nvim/ROADMAP/tasks/alpha/alpha.md", "task"),
+      t("C:/vault/lib.nvim/Backlog/TASKS/2026-01-02_alpha.md", "done", "2026-01-02"),
+      t("C:/vault/lib.nvim/Backlog/TASKS/2026-02-03_alpha.md", "done", "2026-02-03"),
+    }
+    H.with_modules({ ["tasks_nvim.resolve"] = fake_tasks(targets, calls) }, function()
+      TASK._reset()
+      H.line_at("lib.nvim/alpha", "lib", {})
+      local r = TASK.resolve()
+      local labels = {}
+      H.with_modules({ ["ui.kit"] = false }, function()
+        H.with_ui_select(function(items, opts)
+          for i, item in ipairs(items) do
+            labels[i] = opts.format_item(item)
+          end
+          return nil
+        end, function()
+          TASK.pick(r, function() end)
+        end)
+      end)
+      H.match(labels[1], "%(open lib%.nvim/ROADMAP/tasks/alpha%.md%)")
+      H.match(labels[2], "%(open lib%.nvim/ROADMAP/tasks/alpha/alpha%.md%)")
+      H.match(labels[3], "%(finished 2026%-01%-02%)")
+      H.match(labels[4], "%(finished 2026%-02%-03%)")
+      local seen = {}
+      for _, l in ipairs(labels) do
+        H.falsy(seen[l], "no two identical lines")
+        seen[l] = true
+      end
+    end)
+    TASK._reset()
+  end)
+
+  H.check("task id: a lone target keeps the short label", function()
+    local targets = { target("/v/open.md", "task"), target("/v/done.md", "done") }
+    H.with_modules({ ["tasks_nvim.resolve"] = fake_tasks(targets, {}) }, function()
+      TASK._reset()
+      H.line_at("lib.nvim/alpha", "lib", {})
+      local r = TASK.resolve()
+      local labels = {}
+      H.with_modules({ ["ui.kit"] = false }, function()
+        H.with_ui_select(function(items, opts)
+          for i, item in ipairs(items) do
+            labels[i] = opts.format_item(item)
+          end
+        end, function()
+          TASK.pick(r, function() end)
+        end)
+      end)
+      H.match(labels[1], "%(open%)")
+      H.match(labels[2], "%(finished%)")
+    end)
+    TASK._reset()
+  end)
+
   -- ── found in review ───────────────────────────────────────────────────────
 
   H.check("task id: tasks = false turns it off, like enable = false", function()

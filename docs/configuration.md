@@ -34,8 +34,11 @@ require("gopath").setup({
   -- A task id (`<area>/<slug>`) under the cursor opens its task file, through
   -- tasks.nvim (soft dependency: without it nothing happens and the id is read
   -- as a path). Only an id a vault knows counts. Several targets (an open and a
-  -- finished task of one slug, the id in two vaults) are offered to pick from
-  -- by gF, `:Gopath open` and the context menu's Open and Reveal. `tasks = false`
+  -- finished task of one slug, the id in two vaults) are offered to pick from,
+  -- labelled with what tells them apart (kind; the finishing day of a finished
+  -- one, else the path in the vault). A group symbol `[[group/<name>]]` (cursor
+  -- on the name) opens the file explaining the group (tasks.nvim resolves it).
+  -- Picked by gF, `:Gopath open` and the context menu's Open and Reveal. `tasks = false`
   -- turns it off like `enable = false`.
   tasks = {
     enable = true,

@@ -2,7 +2,8 @@
 ---@brief A task id under the cursor (`<area>/<slug>`), resolved to the task file through tasks.nvim.
 ---@description
 --- A to-do list, a commit message or a handover names tasks by id. `gF` on one opens the task file: the open task in
---- `ROADMAP/tasks/`, or the finished one in `Backlog/`.
+--- `ROADMAP/tasks/`, or the finished one in `Backlog/`. A group symbol (`[[group/<name>]]`, cursor on the name) opens
+--- the file that explains the group (`ALL/groups/<name>.md` of a vault), at the line tasks.nvim names.
 ---
 --- **All the knowledge is tasks.nvim's.** What an id looks like, where a vault is, which areas exist and where an open
 --- or a finished task lives is answered by `tasks_nvim.resolve`; this module only turns its targets into a
@@ -100,7 +101,13 @@ local function result_of(target)
     source = "tasks",
     confidence = 0.95,
     exists = true,
-    task = { id = target.id, kind = target.kind, title = target.title, root = target.root },
+    task = {
+      id = target.id,
+      kind = target.kind,
+      title = target.title,
+      root = target.root,
+      date = target.date,
+    },
   }
 end
 
@@ -128,11 +135,52 @@ function M.resolve()
   return first
 end
 
----@param res GopathResult
+---`path` relative to the vault `root` (forward slashes), or `path` itself when it lies elsewhere.
+---@param path string
+---@param root string|nil
 ---@return string
-local function label(res)
+local function relative_to(path, root)
+  path = path:gsub("\\", "/")
+  if not root or root == "" then return path end
+  root = root:gsub("\\", "/"):gsub("/+$", "")
+  if path:sub(1, #root + 1) == root .. "/" then return path:sub(#root + 2) end
+  return path
+end
+
+---What tells `res` apart from the other targets of the same id and kind: a finished task's day
+---(`date`) when every one of them has its own, else the path relative to the vault (file or folder).
+---nil when it is the only one of its kind.
+---@param res GopathResult
+---@param all GopathResult[]
+---@return string|nil
+local function distinction(res, all)
   local t = res.task or {}
-  local where = t.kind == "done" and "finished" or "open"
+  local peers = {}
+  for _, other in ipairs(all) do
+    local o = other.task or {}
+    if o.id == t.id and o.kind == t.kind then peers[#peers + 1] = other end
+  end
+  if #peers < 2 then return nil end
+  if t.kind == "done" and t.date then
+    local seen, distinct = {}, true
+    for _, other in ipairs(peers) do
+      local d = (other.task or {}).date
+      if not d or seen[d] then distinct = false end
+      seen[d or ""] = true
+    end
+    if distinct then return t.date end
+  end
+  return relative_to(res.path or "", t.root)
+end
+
+---@param res GopathResult
+---@param all GopathResult[]|nil  every target offered, to tell same-looking ones apart
+---@return string
+local function label(res, all)
+  local t = res.task or {}
+  local where = t.kind == "done" and "finished" or t.kind == "group" and "group" or "open"
+  local extra = distinction(res, all or { res })
+  if extra then where = where .. " " .. extra end
   return ("%s  %s (%s)  %s"):format(t.id or "?", t.title or "", where, t.root or "")
 end
 
@@ -147,7 +195,9 @@ function M.pick(res, on_choice)
     kit.select({
       items = items,
       title = "gopath: task id in several places — pick one",
-      format_item = label,
+      format_item = function(item)
+        return label(item, items)
+      end,
       on_select = on_choice,
       on_cancel = function()
         on_choice(nil)
@@ -157,7 +207,12 @@ function M.pick(res, on_choice)
   end
   vim.ui.select(
     items,
-    { prompt = "gopath: task id in several places — pick one", format_item = label },
+    {
+      prompt = "gopath: task id in several places — pick one",
+      format_item = function(item)
+        return label(item, items)
+      end,
+    },
     on_choice
   )
 end
