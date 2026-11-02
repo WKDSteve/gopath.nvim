@@ -42,12 +42,12 @@ function M.parse_string(text, lang)
   return trees[1]:root()
 end
 
---- Return capture names at position (best-effort, core `vim.treesitter` only:
---- `get_captures_at_pos` exists since Neovim 0.9, and nvim-treesitter's
---- `ts_utils` helper is gone in its rewrite).
+--- Return the captures at position (best-effort, core `vim.treesitter` only:
+--- nvim-treesitter's `ts_utils` helper is gone in its rewrite). Each entry is
+--- what core's `get_captures_at_pos` hands back, a table -- not a bare name.
 ---@param row integer  -- 0-based
 ---@param col integer  -- 0-based
----@return string[]
+---@return { capture: string, lang: string, metadata: table }[]
 function M.captures_at_pos(row, col)
   if not has_ts() then return {} end
   local ok, list = pcall(vim.treesitter.get_captures_at_pos, 0, row, col)

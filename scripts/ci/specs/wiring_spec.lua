@@ -647,6 +647,45 @@ return function(H)
     H.falsy(called, "get_clients exists, so the legacy name is not called")
   end)
 
+  H.check("health.check: the LSP section asks for the clients of the origin buffer", function()
+    local seen, infos = {}, {}
+    local function no_op() end
+    local recorder = {
+      start = no_op,
+      ok = function(m)
+        infos[#infos + 1] = m
+      end,
+      warn = no_op,
+      error = no_op,
+      info = function(m)
+        infos[#infos + 1] = m
+      end,
+    }
+    H.fresh("gopath.health")
+    local buf = vim.api.nvim_create_buf(true, false)
+    vim.bo[buf].filetype = "lua"
+    local prev = vim.api.nvim_get_current_buf()
+    vim.api.nvim_set_current_buf(buf)
+    local ok, err = pcall(function()
+      H.with_field(vim.lsp, "get_clients", function(filter)
+        seen[#seen + 1] = filter
+        return { { name = "fakels" } }
+      end, function()
+        H.with_field(vim, "health", recorder, function()
+          package.loaded["gopath.health"] = nil -- it binds vim.health.* at load time
+          require("gopath.health").check()
+        end)
+      end)
+    end)
+    vim.api.nvim_set_current_buf(prev)
+    vim.api.nvim_buf_delete(buf, { force = true })
+    H.fresh("gopath.health")
+    if not ok then error(err, 0) end
+    H.truthy(#seen >= 1, "asked for clients")
+    H.eq(seen[1].bufnr, buf, "scoped to the origin buffer, not every client of the process")
+    H.match(table.concat(infos, " "), "fakels")
+  end)
+
   ---Run `fn`, then close every window and wipe every buffer it opened and go back to the tab and
   ---window it started in -- also when `fn` raises, so a failing check leaves no layout behind for
   ---the next one. New windows close before the buffers go: wiping a buffer that a window of

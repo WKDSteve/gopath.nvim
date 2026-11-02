@@ -43,14 +43,9 @@ end
 ---for the measurements and why this deliberately does not check
 ---`textDocument/definition` support.
 ---
----`get_active_clients` is the pre-0.10 name and deprecated since. Same
----two-step as `gopath.health`, for the same reason: this plugin supports 0.9.
 ---@return boolean
 local function has_client()
-  ---@diagnostic disable-next-line: deprecated
-  local get = vim.lsp.get_clients or vim.lsp.get_active_clients
-  if not get then return false end
-  local ok, clients = pcall(get, { bufnr = 0 })
+  local ok, clients = pcall(vim.lsp.get_clients, { bufnr = 0 })
   return ok and type(clients) == "table" and #clients > 0
 end
 

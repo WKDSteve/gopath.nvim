@@ -30,28 +30,23 @@ end
 
 -- ── Sections ─────────────────────────────────────────────────────────────────
 
----Report the running Neovim version and `vim.fs.joinpath` availability.
+---Report the running Neovim version against the documented minimum (0.10).
 ---@internal
 local function check_neovim()
   start_s("Neovim version")
   local v = vim.version()
-  if v.major > 0 or v.minor >= 9 then
-    ok_s(string.format("Neovim %d.%d.%d (>= 0.9 required)", v.major, v.minor, v.patch))
+  if v.major > 0 or v.minor >= 10 then
+    ok_s(string.format("Neovim %d.%d.%d (>= 0.10 required)", v.major, v.minor, v.patch))
   else
     err_s(
       string.format(
-        "Neovim %d.%d.%d detected — gopath.nvim requires 0.9+",
+        "Neovim %d.%d.%d detected — gopath.nvim requires 0.10+",
         v.major,
         v.minor,
         v.patch
       ),
-      { "Upgrade Neovim to 0.9+" }
+      { "Upgrade Neovim to 0.10+" }
     )
-  end
-  if v.major > 0 or v.minor >= 10 then
-    ok_s("vim.fs.joinpath available (Neovim 0.10+)")
-  else
-    info_s("vim.fs.joinpath not available (Neovim < 0.10) — using string concat fallback")
   end
 end
 
@@ -87,27 +82,34 @@ local function check_external_tools()
   end
 end
 
----Report active LSP clients for the current buffer.
+---Report the LSP clients attached to the buffer `:checkhealth` was run from. The
+---health buffer itself never has any, so the origin buffer is asked (see
+---`origin_buffer`); without one there is nothing meaningful to count.
 ---@internal
 local function check_lsp()
   start_s("LSP")
-  local clients
-  if vim.lsp.get_clients then
-    clients = vim.lsp.get_clients()
-  else
-    -- `get_active_clients` is the pre-0.10 name, deprecated since; it is only
-    -- looked at (and only called) when `get_clients` is absent.
-    ---@diagnostic disable-next-line: deprecated
-    clients = vim.lsp.get_active_clients and vim.lsp.get_active_clients() or {}
+  local buf = M._origin_buffer()
+  if not buf then
+    info_s(
+      "No buffer to ask for LSP clients — run :checkhealth gopath from the buffer you care about"
+    )
+    return
   end
+  local clients = vim.lsp.get_clients({ bufnr = buf })
   if #clients > 0 then
     local names = {}
     for _, c in ipairs(clients) do
       names[#names + 1] = c.name
     end
-    ok_s(string.format("%d active LSP client(s): %s", #clients, table.concat(names, ", ")))
+    ok_s(
+      string.format(
+        "%d LSP client(s) attached to the origin buffer: %s",
+        #clients,
+        table.concat(names, ", ")
+      )
+    )
   else
-    info_s("No active LSP clients in current buffer — language resolvers need LSP")
+    info_s("No LSP client attached to the origin buffer — language resolvers need LSP")
   end
 end
 
@@ -245,7 +247,7 @@ end
 ---@return string lang  the language `ft` maps to
 local function parser_available(ft)
   local lang = vim.treesitter.language.get_lang(ft) or ft
-  -- 0.9/0.10 raise when no parser is found and return nothing on success;
+  -- 0.10 raises when no parser is found and returns nothing on success;
   -- 0.11+ return `true`, or `nil, err` when no parser is found.
   local ok, loaded, err = pcall(vim.treesitter.language.add, lang)
   return ok and not (loaded == nil and err ~= nil), lang
@@ -261,22 +263,29 @@ end
 ---alternate buffer of the window it was run from instead of that window's own buffer.
 ---Calling `check()` directly from a normal buffer keeps working.
 ---@internal
----@return string? ft  nil when no filetype can be determined
-local function origin_filetype()
+---@return integer? buf  nil when no buffer can be determined
+function M._origin_buffer()
   local function usable(buf)
     if not (buf and buf > 0 and vim.api.nvim_buf_is_valid(buf)) then return nil end
     local ft = vim.bo[buf].filetype
     if ft == "" or ft == "checkhealth" then return nil end
-    return ft
+    return buf
   end
-  local ft = usable(vim.api.nvim_get_current_buf())
-  if ft then return ft end
+  local buf = usable(vim.api.nvim_get_current_buf())
+  if buf then return buf end
   local prev = vim.fn.winnr("#")
   if prev > 0 then
-    ft = usable(vim.api.nvim_win_get_buf(vim.fn.win_getid(prev)))
-    if ft then return ft end
+    buf = usable(vim.api.nvim_win_get_buf(vim.fn.win_getid(prev)))
+    if buf then return buf end
   end
   return usable(vim.fn.bufnr("#"))
+end
+
+---@internal
+---@return string? ft  nil when no filetype can be determined
+local function origin_filetype()
+  local buf = M._origin_buffer()
+  return buf and vim.bo[buf].filetype or nil
 end
 
 ---Report nvim-treesitter availability and parser coverage for the filetype of the
