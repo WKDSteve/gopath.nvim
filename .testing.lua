@@ -41,13 +41,6 @@ return {
         reason = "the minimal conformance editor has never run :Gopath cache build; an empty filesystem index is a normal state there",
         expires = "2027-04-14",
       },
-      {
-        check = "K13",
-        level = "warn",
-        text = ":Gopath is a prefix of",
-        reason = ":Gopath is the plugin's own compound command and GopathXxx its per-subcommand commands (same family); renaming either would break users",
-        expires = "2027-04-14",
-      },
     },
   },
   -- One editor per file, started like the old CI line (`-c "lua dofile(...)"`): the specs use
