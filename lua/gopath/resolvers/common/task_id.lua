@@ -205,16 +205,12 @@ function M.pick(res, on_choice)
     })
     return
   end
-  vim.ui.select(
-    items,
-    {
-      prompt = "gopath: task id in several places — pick one",
-      format_item = function(item)
-        return label(item, items)
-      end,
-    },
-    on_choice
-  )
+  vim.ui.select(items, {
+    prompt = "gopath: task id in several places — pick one",
+    format_item = function(item)
+      return label(item, items)
+    end,
+  }, on_choice)
 end
 
 ---Forget whether tasks.nvim was found. For the specs.
