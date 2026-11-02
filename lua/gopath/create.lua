@@ -120,6 +120,7 @@ local function ask(question, choices, on_choice)
     kit.confirm({
       question = question,
       choices = choices,
+      default = 1,
       on_answer = on_choice,
     })
     return
