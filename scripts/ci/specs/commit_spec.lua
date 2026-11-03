@@ -416,5 +416,39 @@ return function(H)
     reset_layout()
   end)
 
+  H.check(
+    "commit: gP (goto_at_cursor) on repo@hash opens the float, ask_commit takes a target",
+    function()
+      reset_layout()
+      config.setup({})
+      H.line_at(("see proj.nvim@%s in the log"):format(second:sub(1, 8)), "proj.nvim@", {
+        filetype = "markdown",
+      })
+      require("gopath.commands").goto_at_cursor("edit")
+      wait(in_show_buffer, "the float from gP")
+      H.truthy(vim.api.nvim_win_get_config(0).relative ~= "", "gP: a float by default")
+      vim.cmd("normal q")
+
+      reset_layout()
+      H.line_at(("see proj.nvim@%s in the log"):format(second:sub(1, 8)), "proj.nvim@", {
+        filetype = "markdown",
+      })
+      local tabs = #vim.api.nvim_list_tabpages()
+      require("gopath.commands").ask_commit("tab")
+      wait(in_show_buffer, "the tab from ask_commit")
+      H.eq(#vim.api.nvim_list_tabpages(), tabs + 1, "ask_commit(target) skips the question")
+      reset_layout()
+
+      H.line_at("no hash here", "hash", { filetype = "markdown" })
+      local seen
+      H.with_field(vim, "notify", function(msg)
+        seen = tostring(msg)
+      end, function()
+        require("gopath.commands").ask_commit()
+      end)
+      H.match(seen or "", "no commit hash", "without a hash it says so")
+    end
+  )
+
   vim.env.REPOS_DIR = saved_repos_dir
 end
