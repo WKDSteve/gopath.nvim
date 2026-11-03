@@ -47,6 +47,16 @@ require("gopath").setup({
                    -- nil = tasks.nvim's own (setup({ vault }) or $TASKS_VAULT)
   },
 
+  -- A commit hash (`a02ddae`, `repo@a02ddae`) under the cursor opens that commit.
+  -- `open` is where `gP` shows it: "float" | "split" | "vsplit" | "tab" | "current"
+  -- (`git show` in a read-only buffer) or "web" (the commit page of the remote).
+  -- `g|`, `g\` and `g}` pick a split, a vsplit and a tab whatever `open` says.
+  -- `commit = false` turns it off like `enable = false`.
+  commit = {
+    enable = true,
+    open   = "float",
+  },
+
   -- Fuzzy alternate when file not found
   alternate = {
     enable               = true,

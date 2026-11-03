@@ -58,6 +58,7 @@ function M.setup(config)
       "copy_location",
       "debug",
       "check",
+      "ask_commit",
       "probe",
     },
     actions = {
@@ -89,6 +90,14 @@ function M.setup(config)
           commands.check_under_cursor()
         end,
         desc = "check path exists / offer create",
+      },
+
+      -- A commit hash under the cursor, opened where the user picks.
+      ask_commit = {
+        rhs = function()
+          commands.ask_commit()
+        end,
+        desc = "open commit under cursor (choose where)",
       },
 
       -- Suffix-based search. Same key in both modes, same intent, different

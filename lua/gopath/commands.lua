@@ -150,6 +150,22 @@ function M.goto_at_cursor(kind)
   end)
 end
 
+---Open the commit hash under the cursor, asking where (web, float, split, vsplit, tab, current).
+---@param target GopathCommitTarget|nil  skip the question
+function M.ask_commit(target)
+  local res = RESOLVE.resolve_at_cursor({})
+  if not res or res.kind ~= "commit" then
+    LOG.warn("no commit hash under the cursor")
+    return
+  end
+  local OC = require("gopath.open.commit")
+  if target then
+    OC.open(res, target)
+  else
+    OC.ask(res)
+  end
+end
+
 ---Check whether the path under cursor exists, without opening it.
 ---Reports existence; when missing, offers to create it (always offers, even
 ---if `create_on_missing.enable = false` — this is an explicit user action)
@@ -205,7 +221,7 @@ function M.copy_location()
   -- would just move the same lie up one level.
   local copy = require("lib.nvim.cross.copy_to_clipboard")
   local text
-  if res.kind == "url" then
+  if res.kind == "url" or res.kind == "commit" then
     text = tostring(res.path or "?")
   else
     local left

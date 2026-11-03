@@ -30,6 +30,7 @@ via `require("gopath").setup({ mappings = ..., commands = ... })`. See
 | `gY` | n | `copy_location` | Copy `path:line:col` to clipboard |
 | `g?` | n | `debug` | Print resolution chain to `:messages` |
 | `gC` | n | `check` | Check path under cursor exists; offer to create if missing (does not open on hit) |
+| `<leader>pc` | n | `ask_commit` | Open the commit hash under the cursor, asking where (web, float, split, vsplit, tab, current) |
 | `<leader>pp` | n | `probe` | Probe path under cursor (suffix search, vsplit) |
 | `<leader>pp` | v | `probe` | Probe selected text (suffix search, vsplit) |
 
@@ -92,6 +93,7 @@ tab-completion works at every level. `cache *` subcommands only appear when
 | `debug` | — | Print resolution chain to `:messages` |
 | `probe` | `[edit\|split\|vsplit\|explorer\|filetree]` | Probe path under cursor / selection (partial or whole; `explorer`/`filetree` reveal instead of opening) |
 | `check` | — | Check path under cursor exists; offer to create if missing |
+| `commit` | `[ask\|web\|float\|split\|vsplit\|tab\|current]` | Open the commit hash under the cursor (`ask`, the default, asks where) |
 | `cache build` | — | Rebuild filesystem index |
 | `cache info` | — | Show cache statistics |
 | `cache add-root` | `<dir>` | Add directory to cache search roots |

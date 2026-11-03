@@ -163,6 +163,14 @@ return {
     vaults = nil,
   },
 
+  -- A commit hash under the cursor (`a02ddae`, `repo@a02ddae`) opens that commit. `open` is where `gP` shows it:
+  -- "float" | "split" | "vsplit" | "tab" | "current" (`git show` in a read-only buffer) or "web" (the commit page
+  -- of the remote, in the browser). `g|`, `g\` and `g}` pick a split, a vsplit and a tab whatever `open` says.
+  commit = {
+    enable = true,
+    open = "float",
+  },
+
   mappings = {
     open_here = "gP",
     open_split = "g|",
@@ -174,6 +182,7 @@ return {
     debug = "g?",
     probe = "<leader>pp",
     check = "gC",
+    ask_commit = "<leader>pc",
   },
 
   commands = {

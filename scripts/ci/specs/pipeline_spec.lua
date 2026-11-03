@@ -417,10 +417,15 @@ return function(H)
   end)
 
   H.check("resolve: the pre-language stages are one ordered list the probe can report", function()
-    H.same(
-      require("gopath.resolve").stage_names(),
-      { "help", "url_strict", "env_path", "task_id", "filetoken", "linepath" },
-      "the order the header documents"
-    )
+    H.same(require("gopath.resolve").stage_names(), {
+      "help",
+      "url_strict",
+      "env_path",
+      "task_id",
+      "commit_file",
+      "commit",
+      "filetoken",
+      "linepath",
+    }, "the order the header documents")
   end)
 end

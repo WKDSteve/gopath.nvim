@@ -16,6 +16,7 @@
 ---@field copy_location string|string[]|false Default: "gY"
 ---@field debug string|string[]|false Default: "g?"
 ---@field probe string|string[]|false Default: "<leader>pp" (n + v mode)
+---@field ask_commit string|string[]|false Default: "<leader>pc". Open the commit under the cursor, asking where (web, float, split, vsplit, tab, current).
 ---@field check string|string[]|false Default: "gC"
 --- Check-only: resolve the path under cursor, report whether it exists, and
 --- (if missing) offer to create it — without going through open_here/etc.
@@ -107,6 +108,10 @@
 ---@field roots string[]|nil Default: nil (auto: bufdir, cwd, git root, stdpath dirs).
 ---@field limit integer Default: 100. Maximum matches collected per search.
 
+---@class GopathCommit
+---@field enable boolean Default: true. Resolve a commit hash (`a02ddae`, `repo@a02ddae`) under the cursor.
+---@field open "float"|"split"|"vsplit"|"tab"|"current"|"web" Default: "float". Where `gP` shows the commit.
+
 ---@class GopathTasks
 ---@field enable boolean Default: true. Resolve a task id under the cursor through tasks.nvim; a no-op without it.
 ---@field vaults string[]|nil Default: nil (tasks.nvim's configured vault). Vaults to look in, in order.
@@ -158,4 +163,5 @@
 ---@field truncated? GopathTruncated
 ---@field linepath? GopathLinepath Whole-line path extraction
 ---@field tailsearch? GopathTailsearch Cache + filesystem suffix search
+---@field commit? GopathCommit|false Commit hashes under the cursor open the commit (`git show` view or web page)
 ---@field tasks? GopathTasks Task ids (`<area>/<slug>`) open their task file, through tasks.nvim (soft dependency)

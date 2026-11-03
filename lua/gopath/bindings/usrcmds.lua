@@ -150,6 +150,24 @@ local function register_gopath_cmd(config, commands)
     },
 
     {
+      path = { "commit" },
+      args = {
+        {
+          name = "target",
+          type = "STRING",
+          optional = true,
+          enum = { "ask", "web", "float", "split", "vsplit", "tab", "current" },
+          desc = "Where to show the commit; default: ask",
+        },
+      },
+      desc = "Open the commit hash under the cursor (git show view, or the web page)",
+      run = function(ctx)
+        local target = ctx.args.target
+        commands.ask_commit((target and target ~= "ask") and target or nil)
+      end,
+    },
+
+    {
       path = { "copy" },
       desc = "Copy path:line:col to clipboard",
       run = function()

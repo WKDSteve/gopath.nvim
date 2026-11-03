@@ -50,6 +50,16 @@ end
 function M.open(res, mode)
   if not (res and res.path) then return end
 
+  -- A commit is a `git show` view or a web page, never a file: its own opener.
+  if res.kind == "commit" then
+    require("gopath.open.commit").open(res, mode)
+    return
+  end
+  if res.kind == "commit_file" then
+    require("gopath.open.commit").open_file(res, mode)
+    return
+  end
+
   local external = require("gopath.external")
 
   -- A URL result is never a buffer and never a create-candidate: hand it to

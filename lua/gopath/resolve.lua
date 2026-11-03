@@ -7,6 +7,7 @@
 ---   2. Env var path ($VAR/...) — always, before filetoken sees raw token.
 ---   2.5 Task id (<area>/<slug>) — through tasks.nvim, when it is installed;
 ---      only an id a vault knows, so a relative path is never taken for one.
+---   2.7 File of a diff line in a gopath `git show` buffer; 2.8 commit hash (`a02ddae`, `repo@a02ddae`).
 ---   3. Filetoken — high-confidence existing hit returned immediately;
 ---      low-confidence / non-existent result held as fallback.
 ---   3.5 Linepath — whole-line path extraction (when cascade enabled).
@@ -43,6 +44,17 @@ end
 local function guarded(modname)
   local ok, res = pcall(function()
     return require(modname).resolve()
+  end)
+  if ok then return res end
+end
+
+--- Call `modname.fn()` with every failure (load or run) swallowed.
+---@param modname string
+---@param fn string
+---@return GopathResult|nil
+local function guarded_fn(modname, fn)
+  local ok, res = pcall(function()
+    return require(modname)[fn]()
   end)
   if ok then return res end
 end
@@ -90,6 +102,22 @@ local STAGES = {
     name = "task_id",
     run = function()
       return guarded("gopath.resolvers.common.task_id")
+    end,
+  },
+  -- 2.7 In a `git show` buffer that gopath made: the file of a `diff --git` / `+++ b/` line. Before filetoken, which
+  --     would read `b/lua/x.lua` as a relative path.
+  {
+    name = "commit_file",
+    run = function()
+      return guarded_fn("gopath.resolvers.common.commit", "resolve_in_show")
+    end,
+  },
+  -- 2.8 A commit hash (`a02ddae`, `repo@a02ddae`). Form only, no git; a file spelled the same wins inside the stage.
+  --     Before filetoken, which would offer to create a file named like the hash.
+  {
+    name = "commit",
+    run = function()
+      return guarded_fn("gopath.resolvers.common.commit", "resolve")
     end,
   },
   -- 3. Filetoken: high-confidence existing hit returned immediately.

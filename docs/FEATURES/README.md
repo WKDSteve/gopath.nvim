@@ -16,6 +16,9 @@ dives into individual subsystems (`resolution.md`, `cache.md`,
   universal (any-filetype) resolvers.
 - [Filesystem cache](CACHE.md) — the truncated-path index that makes
   suffix search fast on large trees.
+- [Commits](COMMITS.md) — a commit hash under the cursor opens the commit
+  (`git show` view or web page), fetches it when missing, and jumps from a
+  diff line to the file.
 - [External files](EXTERNAL.md) — opening non-text files in the system
   default application.
 - [Integrations](INTEGRATIONS.md) — the plugins that call

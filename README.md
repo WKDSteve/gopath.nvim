@@ -55,6 +55,15 @@ stack-trace line all end in the same place: the right file, at the right line.
 > (`tasks = { enable, vaults }` or `tasks = false`, see
 > [All options](docs/configuration.md)).
 >
+> **Commits** — a commit hash (`a02ddae`, or `repo@a02ddae` as in the
+> `commits:` lists of a task vault) under the cursor opens that commit: the
+> `git show` in a float, split, vsplit, tab or the current window, or its page
+> on the remote's web host. `gP` follows `commit.open` (default float),
+> `<leader>pc` asks where, and a commit the repository lacks offers to fetch
+> it. In the `git show` view a `diff --git` / `+++ b/` line jumps to the file
+> (`commit = { enable, open }` or `commit = false`, see
+> [Commits](docs/FEATURES/COMMITS.md)). Needs lib.nvim's `git.commit_ref`.
+>
 > All of the above are soft: without them everything else works unchanged.
 > [lib.nvim](https://github.com/WKDSteve/lib.nvim) is the one real
 > dependency — see [Requirements](docs/installation.md#requirements).

@@ -83,6 +83,7 @@ Default keymaps (all configurable, see |gopath-config-mappings|):
   gY            Copy path:line:col to clipboard
   g?            Debug resolution under cursor
   gC            Check path under cursor exists; offer to create if missing
+  <leader>pc    Open the commit hash under the cursor, asking where
   <leader>pp    (n) Probe path under cursor via suffix search (vsplit)
   <leader>pp    (v) Probe visual selection via suffix search (vsplit)
 
@@ -416,6 +417,7 @@ mappings = {
   debug         = "g?",
   probe         = "<leader>pp",
   check         = "gC",
+  ask_commit    = "<leader>pc",
 }
     Set any key to false to disable that mapping.
     String array { "gP", "<2-LeftMouse>" } registers multiple keys.

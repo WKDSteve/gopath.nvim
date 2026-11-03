@@ -9,6 +9,7 @@
 | `gY` | Copy `path:line:col` to the clipboard |
 | `gC` | Check the path under the cursor exists; offer to create it if not |
 | `g?` | Print the resolution chain to `:messages` — the first thing to try when a jump goes somewhere odd |
+| `<leader>pc` | Open the commit hash under the cursor, asking where (`gP` on a hash opens it in a float) |
 | `<leader>pp` | Probe the path under the cursor, or the selection, in a vertical split |
 
 Set any config key to `false` to disable a single mapping, or
