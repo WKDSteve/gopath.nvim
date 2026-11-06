@@ -35,12 +35,12 @@ end
 local function check_neovim()
   start_s("Neovim version")
   local v = vim.version()
-  if v.major > 0 or v.minor >= 10 then
+  if v.major > 0 or v.minor >= 11 then
     ok_s(string.format("Neovim %d.%d.%d (>= 0.11 required)", v.major, v.minor, v.patch))
   else
     err_s(
       string.format(
-        "Neovim %d.%d.%d detected — gopath.nvim requires 0.10+",
+        "Neovim %d.%d.%d detected — gopath.nvim requires 0.11+",
         v.major,
         v.minor,
         v.patch
