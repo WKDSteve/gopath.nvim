@@ -42,7 +42,7 @@ Key capabilities:
 ==============================================================================
 2. REQUIREMENTS                                         *gopath-requirements*
 
-  - Neovim >= 0.10
+  - Neovim >= 0.11
   - Optional: fd / fdfind  (fast file search)
   - Optional: rg (ripgrep) (fallback search)
   - Optional: git           (git-root detection)
@@ -456,7 +456,7 @@ All filetypes (universal):
   :checkhealth gopath
 
 Verifies:
-  - Neovim version (>= 0.10 required)
+  - Neovim version (>= 0.11 required)
   - External tools: fd / fdfind, rg, git
   - Active LSP clients
   - Tree-sitter: a parser for the filetype of the buffer you ran
@@ -478,7 +478,7 @@ gP does nothing, and :Gopath / :checkhealth gopath don't exist either: ~
 gP does nothing, but :Gopath debug / :checkhealth gopath work: ~
   :Gopath debug  -- shows resolver output
   :checkhealth gopath  -- check tools and config
-  Requires Neovim >= 0.10
+  Requires Neovim >= 0.11
 
 Path not found: ~
   <leader>pp -- probe uses suffix search across more roots

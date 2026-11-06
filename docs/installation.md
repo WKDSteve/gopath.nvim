@@ -17,7 +17,7 @@ snippets, and optional integrations. For a minimal quickstart, see
 
 | | |
 | --- | --- |
-| Neovim | **0.10+** |
+| Neovim | **0.11+** |
 | [lib.nvim](https://github.com/WKDSteve/lib.nvim) | required — the `:Gopath` command tree, the keymaps, the autocommands and the path helpers |
 
 Optional, each detected at runtime and degrading to nothing when absent:

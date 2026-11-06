@@ -36,7 +36,7 @@ local function check_neovim()
   start_s("Neovim version")
   local v = vim.version()
   if v.major > 0 or v.minor >= 10 then
-    ok_s(string.format("Neovim %d.%d.%d (>= 0.10 required)", v.major, v.minor, v.patch))
+    ok_s(string.format("Neovim %d.%d.%d (>= 0.11 required)", v.major, v.minor, v.patch))
   else
     err_s(
       string.format(
@@ -45,7 +45,7 @@ local function check_neovim()
         v.minor,
         v.patch
       ),
-      { "Upgrade Neovim to 0.10+" }
+      { "Upgrade Neovim to 0.11+" }
     )
   end
 end
