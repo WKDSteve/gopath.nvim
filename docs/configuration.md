@@ -7,6 +7,9 @@ resolution pipeline, Lua symbol resolution, keymap/command cheatsheet).
 
 ```lua
 require("gopath").setup({
+  -- Print debug notifications (the resolution steps); off by default.
+  dev_mode = false,
+
   -- Resolution mode: "hybrid" | "lsp" | "treesitter" | "builtin"
   mode  = "hybrid",
   order = { "lsp", "treesitter", "builtin" },
