@@ -3,7 +3,7 @@
 return {
   id = "gopath.reveal",
   title = "gopath.nvim: gM and gT hand the resolved file over and open no buffer",
-  task = "gopath.nvim/testblatt-bindings-checkliste",
+  task = "gopath.nvim/gm-gt-echt-pruefen",
   manual = {
     "gM on a file opens the system file manager with that file selected",
     "gT on a file reveals it in the real filetree.nvim",
