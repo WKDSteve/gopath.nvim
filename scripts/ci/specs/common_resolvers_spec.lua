@@ -380,7 +380,9 @@ return function(H)
       local r = filetoken.resolve()
       H.truthy(r, "expected a result")
       H.eq(r.exists, true)
-      H.eq(r.kind, "module")
+      -- A plain path is a "file" whether it exists or not: "module" is a language module (require,
+      -- import, ...). The menu's Reveal entries are offered for kind == "file" only.
+      H.eq(r.kind, "file")
       H.eq(r.confidence, 0.75)
       H.eq(r.path, (file:gsub("\\", "/")), "stored with forward slashes")
     end)

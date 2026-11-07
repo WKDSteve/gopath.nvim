@@ -13,7 +13,7 @@ return {
         local text = table.concat(_G.NOTES, "\n")
         _G.NOTES = {}
         return text:find("=== Gopath Debug ===", 1, true) ~= nil
-          and text:find("kind:       %S") ~= nil
+          and text:find("kind:       file", 1, true) ~= nil
           and text:find("source:     %S") ~= nil
           and text:find("src/target.lua", 1, true) ~= nil
           and text:find("line=3", 1, true) ~= nil

@@ -198,7 +198,9 @@ function M.resolve()
 
   return {
     language = vim.bo.filetype or "text",
-    kind = exists and "module" or "file",
+    -- A plain path is a "file", found or not (GopathKind): "module" is a language module that a
+    -- require/import resolver found. The context menu reveals only kind == "file".
+    kind = "file",
     path = abs,
     range = LOC.create_range(parsed.line, parsed.col),
     chain = nil,

@@ -35,7 +35,7 @@ Every resolver returns a `GopathResult` (or `nil`):
 |-------|---------|
 | `path` | Absolute path, **forward-slash canonical** internally |
 | `range` | `{ line, col }` to jump to, or `nil` |
-| `kind` | `"file"` / `"module"` / `"help"` |
+| `kind` | `"file"`: a plain path (found or not); `"module"`: a language module a require/import resolver found; `"help"`, `"url"`, `"commit"` |
 | `source` | Which resolver produced it (debugging) |
 | `confidence` | `0–1`; higher wins earlier |
 | `exists` | Whether the path was confirmed on disk |
