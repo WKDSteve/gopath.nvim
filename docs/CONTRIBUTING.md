@@ -56,7 +56,7 @@ require("gopath").setup({ mode = "hybrid" })
 | `lua/gopath/util/` | Shared path helpers |
 | `lua/gopath/health.lua` | `:checkhealth gopath` |
 | `docs/` | Everything the README links to |
-| `TESTS/` | Manual test guides: fixture lines to put the cursor on |
+| `TESTS/` | Manual test guides (fixture lines to put the cursor on) and the test sheets (`TESTS/sheets/`) |
 | `scripts/ci/` | The automated suites CI runs — see [`TESTS/README.md`](../TESTS/README.md) |
 
 ## Adding a resolver or a language

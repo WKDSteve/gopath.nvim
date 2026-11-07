@@ -1,6 +1,6 @@
 # Tests
 
-Two different things live under this heading, and they are not
+Three different things live under this heading, and they are not
 interchangeable.
 
 **`TESTS/*.lua` are manual guides.** Each file is a buffer full of realistic
@@ -15,6 +15,12 @@ appears. CI only checks that they are still valid, side-effect-free Lua.
 configured by `.testing.lua`) with their own assertion helpers — there is no
 plenary/busted dependency, and no spec here starts a subprocess or touches the
 network.
+
+**`TESTS/sheets/*.sheet.lua` are test sheets** (testing.nvim's
+[docs/SHEETS.md](https://github.com/WKDSteve/testing.nvim/blob/main/docs/SHEETS.md)): every keymap and
+command typed into a child editor, the outcome asserted on buffers, windows and files.
+`TESTS/sheets_spec.lua` runs them (`bash scripts/test.sh --file sheets`). The file manager
+behind `gM` and the real filetree.nvim behind `gT` stay with a person (`manual` of the sheet).
 
 ## Table of contents
 

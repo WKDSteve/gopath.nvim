@@ -4,8 +4,9 @@
 return {
   -- Lua module root of the project.
   plugin = "gopath",
-  -- The automated suites live in scripts/ci (TESTS/ holds manual guides, see TESTS/README.md).
-  roots = { "scripts/ci" },
+  -- The automated suites live in scripts/ci; TESTS/ holds manual guides (TESTS/README.md) and the
+  -- test sheets (TESTS/sheets_spec.lua).
+  roots = { "scripts/ci", "TESTS" },
   -- The 20 `return function(H)` specs are named *_spec.lua; the two self-running scripts that the
   -- CI used to start one by one are named explicitly.
   spec_pattern = {
@@ -16,10 +17,16 @@ return {
   -- The specs run on scripts/ci/harness.lua (found upwards from scripts/ci/specs); the two scripts
   -- run in a process of their own.
   dialect = {
+    ["TESTS/sheets_spec.lua"] = "busted",
     ["scripts/ci/specs/*"] = "h",
     ["*"] = "script",
   },
   deps = { "lib.nvim" },
+  -- The worktree of `ci commit` has no sibling checkouts: the child editors of the sheets find them this way.
+  env_allow = { "LIB_NVIM_DIR", "TESTING_NVIM_DIR" },
+  -- All test sheets run in one spec file, one child editor each: the defaults of 10 s per case and 60 s per file
+  -- are reached under load (fileops, 2026-11-07).
+  timeouts = { case_ms = 30000, file_ms = 300000 },
   -- gopath switches its whole keymap preset off with `mappings = false` (covered by the
   -- "mappings = false binds nothing at all" case of scripts/ci/specs/wiring_spec.lua).
   conformance = {
@@ -63,7 +70,8 @@ return {
   guard_allow = {
     -- lua_resolvers_spec and util_path_spec run `git` (repository root lookup) through vim.system.
     -- The python resolver specs probe the interpreter (python3 -c "import ...") through vim.system.
-    spawn = { "git", "python3" },
+    -- sheets_spec.lua: every test sheet (TESTS/sheets/) runs in a child editor.
+    spawn = { "git", "python3", "nvim" },
     fs = {},
     network = {},
   },

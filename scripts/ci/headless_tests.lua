@@ -45,10 +45,12 @@ local tests_dir = root .. "/TESTS"
 -- empty list for, no error (XP-01). `vim.fs.dir` takes `tests_dir` as an
 -- actual path, so no directory spelling can be misread as pattern syntax.
 --
--- `minimal_init.lua` is the test runner's init (scripts/test.sh), not a guide.
+-- `minimal_init.lua` is the test runner's init (scripts/test.sh) and `sheets_spec.lua` a
+-- spec of the runner (it needs `describe`): neither is a guide.
+local NOT_A_GUIDE = { ["minimal_init.lua"] = true, ["sheets_spec.lua"] = true }
 local fixtures = {}
 for name, typ in vim.fs.dir(tests_dir) do
-  if typ == "file" and name:sub(-4) == ".lua" and name ~= "minimal_init.lua" then
+  if typ == "file" and name:sub(-4) == ".lua" and not NOT_A_GUIDE[name] then
     fixtures[#fixtures + 1] = tests_dir .. "/" .. name
   end
 end
