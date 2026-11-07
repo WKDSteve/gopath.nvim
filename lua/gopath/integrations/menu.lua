@@ -126,6 +126,21 @@ function M.enabled()
   return (cfg.integrations or {}).ui_menu ~= false
 end
 
+---Kinds whose `path` is not a local path to reveal: a URL, a commit (a
+---`git show` view or a web page) and a file at a commit, a `:help` subject.
+---@internal
+local NOT_REVEALABLE = { url = true, commit = true, commit_file = true, help = true }
+
+---Whether the reveal entries make sense for `res`: it names a local path the
+---resolver confirmed to exist (module, task id, require target, plain file,
+---...), and is not one of `NOT_REVEALABLE`.
+---@internal
+---@param res GopathResult
+---@return boolean
+local function revealable(res)
+  return not NOT_REVEALABLE[res.kind] and type(res.path) == "string" and res.exists == true
+end
+
 ---Build the gopath menu entries for the current cursor/selection context.
 ---Returns an empty list when ui.nvim is not installed or nothing resolves.
 ---@param _opts? table  reserved for future use
@@ -138,7 +153,7 @@ function M.items(_opts)
   if not res then return {} end
 
   local commands = require("gopath.commands")
-  local can_reveal = res.kind == "file"
+  local can_reveal = revealable(res)
 
   local out = {}
   cm.group(

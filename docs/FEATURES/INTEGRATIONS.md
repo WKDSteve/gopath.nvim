@@ -105,8 +105,10 @@ host. The module also answers `enabled()`, which is what `ui.menu` asks first.
 
 - **Module:** `lua/gopath/integrations/menu.lua`
 - **Entries:** "Open" (always, for anything resolved), "Reveal in File
-  Manager" / "Reveal in filetree.nvim" (only for `kind == "file"` — a URL or
-  a `:help` subject only ever gets "Open")
+  Manager" / "Reveal in filetree.nvim" (for every result that names a local
+  path the resolver confirmed to exist — a file, a module, a task id, a
+  require target, ...; a URL, a commit, a file at a commit, a `:help` subject
+  or a path that does not exist only ever gets "Open")
 - **Wiring it up:** a host adds one row to its own contributor table, e.g.
   `config.menu.mappings.CONTRIBUTORS` in a `lib.nvim.contextmenu`-based
   setup — see that host's own docs for the exact shape.

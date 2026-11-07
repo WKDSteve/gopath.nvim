@@ -110,6 +110,59 @@ return function(H)
     end)
   end)
 
+  ---The entry labels `items()` builds for a resolved `res`.
+  ---@param res table
+  ---@return string[]
+  local function labels_for(res)
+    local names = {}
+    H.with_modules({
+      ["ui.contextmenu"] = fake_contextmenu(),
+      ["gopath.resolve"] = {
+        resolve_at_cursor = function()
+          return res
+        end,
+      },
+    }, function()
+      for _, item in ipairs(MENU.items()) do
+        names[#names + 1] = item.name
+      end
+    end)
+    return names
+  end
+
+  H.check("items(): every result naming an existing local path gets both reveal entries", function()
+    for _, kind in ipairs({ "module", "id", "require", "chain", "field", "symbol", "current" }) do
+      H.same(
+        labels_for({ kind = kind, path = "/repo/lua/x.lua", exists = true }),
+        { "  Open", "  Reveal in File Manager", "  Reveal in filetree.nvim" },
+        kind .. " result"
+      )
+    end
+  end)
+
+  H.check(
+    "items(): no reveal entries for a missing path, a commit or a file at a commit",
+    function()
+      local open_only = { "  Open" }
+      H.same(
+        labels_for({ kind = "file", path = "/nope.lua", exists = false }),
+        open_only,
+        "missing"
+      )
+      H.same(
+        labels_for({ kind = "module", path = "/nope.lua", exists = false }),
+        open_only,
+        "module"
+      )
+      H.same(labels_for({ kind = "commit", path = "abc1234", exists = true }), open_only, "commit")
+      H.same(
+        labels_for({ kind = "commit_file", path = "/repo/a.lua", exists = true }),
+        open_only,
+        "commit_file"
+      )
+    end
+  )
+
   H.check("open_result(): several task targets are picked from, the pick is opened", function()
     local OPEN = require("gopath.open")
     local first = { kind = "file", path = "/vault-a/t.md", exists = true }
