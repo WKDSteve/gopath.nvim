@@ -10,6 +10,9 @@ return {
       _G.write("deep/er/needle.lua")
       _G.LINE = "log: needle.lua (other words)"
       _G.COL = 6
+      -- The cursor token of this line ("zzz/needle.lua") names no file: only the selected span does.
+      _G.PART = "log: zzz/needle.lua"
+      _G.PART_COL = 10
       _G.found = function(want_layout)
         return _G.at("deep/er/needle.lua") and _G.layout() == want_layout
       end]],
@@ -19,8 +22,12 @@ return {
     { keys = "<leader>pp", note = "normal mode: the token under the cursor, in a vsplit" },
     { wait = [[_G.found("row")]], timeout = 8000 },
 
-    { lua = [[_G.on(_G.LINE, _G.COL)]] },
-    { keys = "vt <leader>pp", note = "visual mode: just the selected span, in a vsplit" },
+    { lua = [[_G.on(_G.PART, _G.PART_COL)]] },
+    { keys = ":GopathProbe<CR>", note = "the cursor token of that line finds nothing" },
+    { wait = [[_G.noted("probe: no match found for 'zzz/needle.lua'")]], timeout = 8000 },
+
+    { lua = [[_G.on(_G.PART, _G.PART_COL)]] },
+    { keys = "vE<leader>pp", note = "visual mode: just the selected span, in a vsplit" },
     { wait = [[_G.found("row")]], timeout = 8000 },
 
     { lua = [[_G.on(_G.LINE, _G.COL)]] },
@@ -31,8 +38,8 @@ return {
     { keys = ":Gopath probe edit<CR>", note = "it takes a mode" },
     { wait = [[_G.found("leaf")]], timeout = 8000 },
 
-    { lua = [[_G.on(_G.LINE, _G.COL)]] },
-    { keys = "vt :Gopath probe<CR>", note = "with a range it reads the selection" },
+    { lua = [[_G.on(_G.PART, _G.PART_COL)]] },
+    { keys = "vE:Gopath probe<CR>", note = "with a range it reads the selection" },
     { wait = [[_G.found("row")]], timeout = 8000 },
 
     { lua = [[_G.on(_G.LINE, _G.COL)]] },
