@@ -23,6 +23,10 @@ return {
     },
 
     { keys = ":Gopath cache build<CR>", note = "a build, and it reports its end" },
+    {
+      expect = [[table.concat(_G.NOTES, "\n"):find("Building filesystem cache", 1, true) ~= nil]],
+      note = "it announces itself first: the walk is asynchronous, not an instant swap",
+    },
     { wait = [[_G.noted("Cache build complete")]], timeout = 8000 },
     { expect = [[_G.finds("deep/first.lua") and not _G.finds("deep/second.lua")]] },
 
