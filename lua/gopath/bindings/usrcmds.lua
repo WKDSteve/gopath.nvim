@@ -379,7 +379,14 @@ local function register_individual(config, commands)
       cache.add_root(expand_path(dir), true)
     end, {
       nargs = 1,
-      complete = "dir",
+      -- Not `complete = "dir"`: on Windows Neovim lists files for a user command with that attribute, while
+      -- getcompletion(lead, "dir") answers directories only (measured, nvim 0.12.2). A backtick in the lead is a
+      -- command substitution to the wildcard expansion, so such a lead completes to nothing.
+      complete = function(arg_lead)
+        if arg_lead:find("`", 1, true) then return {} end
+        local ok, list = pcall(vim.fn.getcompletion, arg_lead, "dir")
+        return ok and list or {}
+      end,
       desc = "Gopath: add cache root (alias for :Gopath cache add-root <dir>)",
     })
   end

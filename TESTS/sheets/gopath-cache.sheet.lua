@@ -50,6 +50,14 @@ return {
       note = "<Tab> offers no file",
     },
     {
+      expect = [[vim.fs.normalize(vim.fn.getcompletion("GopathCacheAddRoot o", "cmdline")[1] or "") == "one"]],
+      note = "the alias offers the directory too",
+    },
+    {
+      expect = [[#vim.fn.getcompletion("GopathCacheAddRoot one/deep/fi", "cmdline") == 0]],
+      note = "and no file (Neovim's own -complete=dir lists files on Windows)",
+    },
+    {
       keys = ":Gopath cache add-root one/deep/first.lua<CR>",
       ignore_errmsg = true,
       note = "a file is refused before anything is added",
