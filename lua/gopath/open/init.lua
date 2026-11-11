@@ -127,6 +127,8 @@ function M.open(res, mode)
     -- PDFs get a mode chooser when pdfport.nvim is installed; everything else
     -- (and PDFs without pdfport) goes straight to the system viewer.
     if require("gopath.external.pdf").try_open(res.path) then return end
+    -- Images likewise, when images.nvim is installed (and `external.images.optout` is off).
+    if require("gopath.external.images").try_open(res.path) then return end
 
     external.open(res.path)
     return

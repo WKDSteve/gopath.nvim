@@ -95,6 +95,14 @@ require("gopath").setup({
       default = "system",  -- mode used when picker = false
                            -- "system"|"buffer"|"float"|"terminal"
     },
+
+    -- Image handling. Only has an effect when images.nvim is installed;
+    -- without it an image always goes straight to the system viewer.
+    images = {
+      picker = true,       -- chooser: System app / inline / zen
+      default = "system",  -- mode used when picker = false: "system"|"show"|"zen"
+      optout = false,      -- true: never offer images.nvim, even when installed
+    },
   },
 
   -- URLs under the cursor open in the browser instead of resolving to a file

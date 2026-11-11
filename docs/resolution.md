@@ -211,6 +211,11 @@ top-level entry can be hidden by a stale index, and four signals cover that:
    gopath's own opener, so it behaves identically with or without pdfport.
    Without pdfport, nothing changes: straight to the system viewer, no dialog.
    Configure via `external.pdf = { picker = true, default = "system" }`.
+   **Images** (png, jpg, gif, webp, bmp, svg) work the same way through
+   [`gopath.external.images`](../lua/gopath/external/images.lua) with
+   [images.nvim](https://github.com/WKDSteve/images.nvim): *System app* first,
+   then *inline* (`images.show`) and *zen* (`images.zen`); configure via
+   `external.images = { picker, default, optout }`.
 2. A non-existent path is offered for creation via
    [`gopath.create`](../lua/gopath/create.lua) (`create_on_missing`, see
    below) instead of just reporting `File not found`. On confirmation the

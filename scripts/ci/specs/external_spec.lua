@@ -499,6 +499,139 @@ return function(H)
     end)
   end)
 
+  -- ── image chooser ──────────────────────────────────────────────────────────
+
+  local images = require("gopath.external.images")
+
+  H.check("images.is_image: the formats images.nvim draws", function()
+    H.eq(images.is_image("a/b.png"), true)
+    H.eq(images.is_image("A/B.JPG"), true, "case-insensitive")
+    H.eq(images.is_image("x.svg"), true)
+    H.eq(images.is_image("x.tiff"), false, "not drawn by images.nvim: the system viewer keeps it")
+    H.eq(images.is_image("x.pdf"), false)
+    H.eq(images.is_image(""), false)
+    H.eq(images.is_image(nil), false)
+  end)
+
+  H.check("images.try_open: without images.nvim nothing is offered", function()
+    H.with_modules({ images = false }, function()
+      H.eq(images.available(), false)
+      H.eq(images.try_open("/tmp/a.png"), false, "unhandled -> caller uses the system opener")
+      H.eq(images.try_open("/tmp/a.pdf"), false, "not an image at all")
+    end)
+  end)
+
+  H.check("images.try_open: picker = false dispatches the configured default", function()
+    local shown = {}
+    H.config_sandbox(function(c)
+      c.setup({ external = { images = { picker = false, default = "zen" } } })
+      H.with_modules({
+        images = {
+          show = function() end,
+          zen = function(p)
+            shown[#shown + 1] = p
+          end,
+        },
+      }, function()
+        H.eq(images.available(), true)
+        H.eq(images.try_open("/tmp/a.png"), true, "handled")
+      end)
+      H.same(shown, { "/tmp/a.png" })
+    end)
+  end)
+
+  H.check("images.try_open: optout = true never offers images.nvim", function()
+    H.config_sandbox(function(c)
+      c.setup({ external = { images = { optout = true } } })
+      H.with_modules({ images = { show = function() end } }, function()
+        H.eq(images.try_open("/tmp/a.png"), false, "falls through to the system opener")
+      end)
+    end)
+  end)
+
+  H.check("images.try_open: default = 'system' goes through gopath's own opener", function()
+    local images_calls, opener_calls = 0, {}
+    H.config_sandbox(function(c)
+      c.setup({ external = { images = { picker = false, default = "system" } } })
+      H.with_modules({
+        images = {
+          show = function()
+            images_calls = images_calls + 1
+          end,
+        },
+        ["gopath.external"] = {
+          open = function(p)
+            opener_calls[#opener_calls + 1] = p
+          end,
+        },
+      }, function()
+        H.eq(images.try_open("/tmp/a.png"), true)
+      end)
+      H.eq(images_calls, 0)
+      H.same(opener_calls, { "/tmp/a.png" })
+    end)
+  end)
+
+  H.check(
+    "images.try_open: a throwing images.nvim falls back to the system app and says so",
+    function()
+      local opener_calls = {}
+      H.config_sandbox(function(c)
+        c.setup({ external = { images = { picker = false, default = "show" } } })
+        H.with_modules({
+          images = {
+            show = function()
+              error("no terminal")
+            end,
+          },
+          ["gopath.external"] = {
+            open = function(p)
+              opener_calls[#opener_calls + 1] = p
+            end,
+          },
+        }, function()
+          local notes = H.capture_notify(function()
+            H.eq(images.try_open("/tmp/a.png"), true)
+          end)
+          H.match(H.notify_text(notes), "images.nvim failed", "reported")
+        end)
+        H.same(opener_calls, { "/tmp/a.png" })
+      end)
+    end
+  )
+
+  H.check(
+    "images.try_open: with the picker on, ui.kit is offered system first, then the terminal views",
+    function()
+      local shown
+      local dispatched = {}
+      H.config_sandbox(function(c)
+        c.setup({ external = { images = { picker = true } } })
+        H.with_modules({
+          images = {
+            show = function(p)
+              dispatched[#dispatched + 1] = "show:" .. p
+            end,
+            zen = function() end,
+          },
+          ["ui.kit"] = {
+            select = function(spec)
+              shown = spec
+            end,
+          },
+        }, function()
+          H.eq(images.try_open("/tmp/docs/a.png"), true, "handled: the chooser is up")
+          H.truthy(shown, "ui.kit.select was called")
+          H.eq(#shown.items, 3)
+          H.eq(shown.items[1].mode, "system", "the exception stays one keystroke away")
+          H.match(shown.title, "a.png")
+          shown.on_select(shown.items[2])
+        end)
+        H.same(dispatched, { "show:/tmp/docs/a.png" }, "picking 'inline' draws through images.show")
+      end)
+    end
+  )
+
   H.check(
     "pdf.try_open: with the picker on, ui.kit is offered the four modes, system first",
     function()

@@ -54,6 +54,14 @@ return {
       picker = true, -- false → always open with `default`, no chooser
       default = "system", -- mode used when picker = false
     },
+
+    -- Image handling. Only takes effect when images.nvim is installed;
+    -- without it an image always goes straight to the system viewer.
+    images = {
+      picker = true, -- false -> always open with `default`, no chooser
+      default = "system", -- "system"|"show"|"zen", used when picker = false
+      optout = false, -- true -> never offer images.nvim, even when installed
+    },
   },
 
   url = {

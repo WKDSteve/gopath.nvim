@@ -238,6 +238,33 @@ local function check_pdfport()
   end
 end
 
+---Report images.nvim availability and the effective image-open mode.
+---@internal
+local function check_images_nvim()
+  start_s("images.nvim")
+  local ok_cfg, cfg_mod = pcall(require, "gopath.config")
+  local cfg = ok_cfg and (cfg_mod.get().external or {}).images or {}
+
+  if not require_ok("images") then
+    info_s(
+      "images.nvim not installed -- images go straight to the system viewer; "
+        .. "install WKDSteve/images.nvim to show images inside the terminal"
+    )
+  elseif cfg.optout == true then
+    info_s(
+      "images.nvim installed, but external.images.optout = true -- images always use the system viewer"
+    )
+  elseif cfg.picker ~= false then
+    ok_s("images.nvim installed -- images offer System app / inline / zen")
+  else
+    info_s(
+      "images.nvim installed, but external.images.picker = false -- images always open with mode '"
+        .. tostring(cfg.default or "system")
+        .. "'"
+    )
+  end
+end
+
 ---Whether a Tree-sitter parser can be loaded for filetype `ft`, asked of core
 ---`vim.treesitter` only (nvim-treesitter's `parsers.has_parser` is gone in its
 ---rewrite, and gopath never needs the plugin at runtime).
@@ -511,6 +538,7 @@ function M.check()
   check_lib_nvim()
   check_filetree_nvim()
   check_pdfport()
+  check_images_nvim()
   check_treesitter()
   check_which_key()
   check_config()

@@ -58,10 +58,20 @@
 --- Mode used when `picker = false`. "system" preserves the pre-pdfport
 --- behaviour; the other three are pdfport.nvim renderers.
 
+---@alias GopathImageMode "system"|"show"|"zen"
+
+---@class GopathImageOptions
+---@field picker boolean Default: true.
+--- Show a chooser (System app / inline / zen) when opening an image. Requires images.nvim; without it an image
+--- always goes to the system viewer and no chooser appears. Set false to always use `default` instead.
+---@field default GopathImageMode Default: "system". Mode used when `picker = false`.
+---@field optout boolean Default: false. True: never offer images.nvim, even when installed.
+
 ---@class GopathExternalOptions
 ---@field enable boolean Default: true
 ---@field extensions string[]|nil Default: nil. Extends (does not replace) the built-in extension list.
 ---@field pdf GopathPdfOptions PDF-specific opening (pdfport.nvim integration)
+---@field images GopathImageOptions Image-specific opening (images.nvim integration)
 
 ---@class GopathUrlOptions
 ---@field enable? boolean Default: true. Recognise URLs under the cursor and open them externally.

@@ -116,6 +116,11 @@ local KNOWN = {
       picker = true,
       default = true,
     },
+    images = {
+      picker = true,
+      default = true,
+      optout = true,
+    },
   },
   url = {
     enable = true,
