@@ -1,6 +1,7 @@
 -- Bindings checklist: :Gopath to-repos-dir, :Gopath to-nvim-dir and their aliases, on a line and on a selection.
 return {
   id = "gopath.shorten",
+  feature = "gopath.shorten",
   title = "gopath.nvim: to-repos-dir and to-nvim-dir rewrite the line or just the selection to $VAR",
   task = "gopath.nvim/testblatt-bindings-checkliste",
   steps = {

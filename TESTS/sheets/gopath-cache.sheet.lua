@@ -1,6 +1,7 @@
 -- Bindings checklist: :Gopath cache build/info/add-root and their aliases.
 return {
   id = "gopath.cache",
+  feature = "gopath.cache",
   title = "gopath.nvim: the cache commands build, report and grow the index a truncated path resolves through",
   task = "gopath.nvim/testblatt-bindings-checkliste",
   steps = {

@@ -2,6 +2,7 @@
 -- file is the `manual` part.
 return {
   id = "gopath.reveal",
+  feature = "gopath.reveal",
   title = "gopath.nvim: gM and gT hand the resolved file over and open no buffer",
   task = "gopath.nvim/gm-gt-echt-pruefen",
   manual = {

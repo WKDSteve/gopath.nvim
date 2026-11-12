@@ -1,6 +1,7 @@
 -- Bindings checklist: gC, :Gopath check, :GopathCheck, and the create offer of a missing path.
 return {
   id = "gopath.check",
+  feature = "gopath.check",
   title = "gopath.nvim: gC reports an existing path and offers to create a missing one",
   task = "gopath.nvim/testblatt-bindings-checkliste",
   steps = {

@@ -3,6 +3,7 @@
 -- threshold of the fuzzy alternate; a bare host with a known TLD. The system opener is recorded here.
 return {
   id = "gopath.resolve",
+  feature = "gopath.resolve",
   title = "gopath.nvim: gF resolves identifiers, chains, values, comments, help tags, near names and bare hosts",
   task = "gopath.nvim/restliche-kaestchen-der-gopath-checkliste-als-testblaetter",
   manual = {

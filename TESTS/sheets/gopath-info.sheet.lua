@@ -1,6 +1,7 @@
 -- Bindings checklist: g?, :Gopath debug, :GopathDebug, :GopathResolve; gY, :Gopath copy, :GopathCopy.
 return {
   id = "gopath.info",
+  feature = "gopath.info",
   title = "gopath.nvim: g? reports the resolution, gY copies path:line:col",
   task = "gopath.nvim/testblatt-bindings-checkliste",
   steps = {

@@ -1,6 +1,7 @@
 -- Bindings checklist: <leader>pp in both modes, :Gopath probe, :GopathProbe.
 return {
   id = "gopath.probe",
+  feature = "gopath.probe",
   title = "gopath.nvim: <leader>pp, :Gopath probe and :GopathProbe find the token or the selection by suffix",
   task = "gopath.nvim/testblatt-bindings-checkliste",
   steps = {

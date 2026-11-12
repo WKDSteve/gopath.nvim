@@ -1,6 +1,7 @@
 -- Bindings checklist: gF, g|, g\, g} and :Gopath open / :GopathOpen with every window mode.
 return {
   id = "gopath.open",
+  feature = "gopath.open",
   title = "gopath.nvim: gF, g|, g\\, g} and :Gopath open open the file under the cursor where they say",
   task = "gopath.nvim/testblatt-bindings-checkliste",
   steps = {
