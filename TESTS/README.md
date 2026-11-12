@@ -19,8 +19,10 @@ network.
 **`TESTS/sheets/*.sheet.lua` are test sheets** (testing.nvim's
 [docs/SHEETS.md](https://github.com/WKDSteve/testing.nvim/blob/main/docs/SHEETS.md)): every keymap and
 command typed into a child editor, the outcome asserted on buffers, windows and files.
-`TESTS/sheets_spec.lua` runs them (`bash scripts/test.sh --file sheets`). The file manager
-behind `gM` and the real filetree.nvim behind `gT` stay with a person (`manual` of the sheet).
+`TESTS/sheets_spec.lua` runs them (`bash scripts/test.sh --file sheets`). `gM` runs lib.nvim's real
+reveal against stand-ins for the programs it starts (`fakes`: PowerShell, nautilus, `open`), so the call is
+checked; that the file manager and the real filetree.nvim behind `gT` show the file stays with a person
+(`manual` of the sheet).
 
 ## Table of contents
 
