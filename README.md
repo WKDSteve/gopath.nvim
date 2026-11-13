@@ -107,3 +107,26 @@ each page answers.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 gopath.nvim is released under the [MIT License](https://opensource.org/licenses/MIT).
+
+<!-- connections:begin (written by the app-icons tool of the workshop; change integrations.json there, not this block) -->
+## Connections
+
+![gopath.nvim: what it uses and what uses it](assets/graphs/gopath.nvim.png)
+
+**Uses**
+
+- [filetree.nvim](https://github.com/WKDSteve/filetree.nvim): The create-on-missing dialog of gopath.nvim offers 'Open in filetree', and `open_filetree` reveals a resolved path there, when filetree.nvim is set up. ([picture](assets/graphs/pair/gopath.nvim--filetree.nvim.png))
+- [images.nvim](https://github.com/WKDSteve/images.nvim): gopath.nvim opens an image through images.nvim when it is installed (`gopath.external.images`). ([picture](assets/graphs/pair/gopath.nvim--images.nvim.png))
+- [pdfport.nvim](https://github.com/WKDSteve/pdfport.nvim): gopath.nvim opens a PDF through pdfport.nvim when it is installed (`gopath.external.pdf`). ([picture](assets/graphs/pair/gopath.nvim--pdfport.nvim.png))
+- [tasks.nvim](https://github.com/WKDSteve/tasks.nvim): gopath.nvim turns a task id under the cursor into its task file with the resolver of tasks.nvim (`tasks_nvim.resolve`). ([picture](assets/graphs/pair/gopath.nvim--tasks.nvim.png))
+- [ui.nvim](https://github.com/WKDSteve/ui.nvim): When a file is not found, gopath.nvim offers alternates in a selection of the kit of ui.nvim (`ui.kit`). ([picture](assets/graphs/pair/gopath.nvim--ui.nvim.png))
+- [lib.nvim](https://github.com/WKDSteve/lib.nvim): the shared base of the plugins.
+
+**Used by**
+
+- [filetree.nvim](https://github.com/WKDSteve/filetree.nvim): filetree.nvim repairs a broken link with the tail search of gopath.nvim (`gopath.resolvers.common.tailsearch`). ([picture](assets/graphs/pair/filetree.nvim--gopath.nvim.png))
+- [hover.nvim](https://github.com/WKDSteve/hover.nvim): hover.nvim resolves a bare path through gopath.nvim (`gopath.resolve`) to find the file and the line it names. ([picture](assets/graphs/pair/hover.nvim--gopath.nvim.png))
+- [images.nvim](https://github.com/WKDSteve/images.nvim): images.nvim writes the link of a pasted image in the environment spelling of gopath.nvim (`gopath.shorten_path`) when it is installed. ([picture](assets/graphs/pair/images.nvim--gopath.nvim.png))
+- [lsp.nvim](https://github.com/WKDSteve/lsp.nvim): lsp.nvim resolves an environment reference in a path to the real path with gopath.nvim (`gopath.resolve_text`). ([picture](assets/graphs/pair/lsp.nvim--gopath.nvim.png))
+- [pickers.nvim](https://github.com/WKDSteve/pickers.nvim): pickers.nvim shortens a path with gopath.nvim (`gopath.env_shorten`) when it inserts a link. ([picture](assets/graphs/pair/pickers.nvim--gopath.nvim.png))
+<!-- connections:end -->
