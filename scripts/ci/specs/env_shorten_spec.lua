@@ -764,10 +764,16 @@ return function(H)
 
   ---A root with `wkdbooks/dev/wkdbook-x/proj/ROADMAP/ROADMAP.md` and
   ---`proj-b/README.md` below it, configured as both the repos var and a known dir.
+  ---The cwd is a fresh temp directory outside the root for the length of `fn` (the
+  ---harness restores it after the check): an unnamed buffer must never be resolved
+  ---against the cwd, and if that regressed, a checkout below a folder named `repos`
+  ---would turn the expectations below into `$REPOS_DIR/<checkout>/...`. The two
+  ---"an unnamed buffer" cases cd below the root themselves to pin that guard.
   ---@param fn fun(root: string, set: fun(extra: table|nil))
   local function with_root(fn)
     H.config_sandbox(function(c)
       local root = H.tmpdir()
+      vim.cmd.cd(vim.fn.fnameescape(H.tmpdir()))
       H.write(root .. "/wkdbooks/dev/wkdbook-x/proj/ROADMAP/ROADMAP.md", { "x" })
       H.write(root .. "/proj-b/README.md", { "x" })
       H.write(root .. "/deep/a/b/c/hidden-dir/f.md", { "x" })

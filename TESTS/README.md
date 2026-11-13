@@ -52,13 +52,6 @@ editor of its own, started like the old CI line (`-c "lua dofile(...)"`), and
 `TESTS/minimal_init.lua` puts the plugin and `lib.nvim` on the runtimepath and
 calls `require("gopath").setup({})` first, as the old unit runner did.
 
-Known issue: two checks of `env_shorten_spec.lua` ("a selection holding a path
-with spaces ...", "a selection keeps the whitespace ...") rely on the working
-directory not lying below a directory named `repos`. The old single-process
-runner hid that, because `create_open_spec.lua` leaves the cwd in a temp
-directory; run per file they are red in a checkout such as `E:/repos/gopath.nvim`
-and green in CI (checkout paths without a `repos` segment).
-
 `ui.nvim` is **not** required. Where a module prefers `ui.kit` (the
 create-on-missing dialog, the alternate picker, the PDF chooser, the ambiguous
 probe) the specs supply a stand-in and assert what it was offered, so the
