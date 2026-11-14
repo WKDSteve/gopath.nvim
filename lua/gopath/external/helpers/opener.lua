@@ -12,17 +12,17 @@ local LOG = require("gopath.util.log")
 
 local M = {}
 
----@type table|nil  the open_nvim module, or nil when unavailable
+---@type table|nil  the module of open.nvim (`open`), or nil when unavailable
 local open_nvim
 do
-  local ok, mod = pcall(require, "open_nvim")
+  local ok, mod = pcall(require, "open")
   if ok and type(mod) == "table" and type(mod.open) == "function" then
     open_nvim = mod
   else
     open_nvim = nil
     vim.schedule(function()
       LOG.debug(
-        "optional dependency 'open_nvim' not found — using built-in "
+        "optional dependency open.nvim (module 'open') not found — using built-in "
           .. "system opener fallback. Add it to your plugin spec "
           .. "(dependencies = { 'WKDSteve/open.nvim' }) for WSL support and shared handlers."
       )
@@ -163,7 +163,9 @@ function M.open_with_system(path)
   if open_nvim then
     local ok, err = pcall(open_nvim.open, "default", "path=" .. path)
     if ok then return true end
-    LOG.warn("open_nvim.open() failed: " .. tostring(err) .. " — falling back to built-in opener")
+    LOG.warn(
+      "open.nvim's open() failed: " .. tostring(err) .. " — falling back to built-in opener"
+    )
   end
 
   return fallback_open_with_system(path)

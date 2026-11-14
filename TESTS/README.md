@@ -90,7 +90,7 @@ seam, and what is asserted is the **argv that would have been spawned**:
 
 | Where | Spawns | Seam | Spec |
 | --- | --- | --- | --- |
-| `external/helpers/opener.lua` | `explorer.exe` / `open` / `xdg-open` via `vim.system` | `vim.system`, plus `open_nvim` and `lib.nvim.cross.open_default` in `package.loaded` | `external_spec.lua` |
+| `external/helpers/opener.lua` | `explorer.exe` / `open` / `xdg-open` via `vim.system` | `vim.system`, plus `open` (open.nvim) and `lib.nvim.cross.open_default` in `package.loaded` | `external_spec.lua` |
 | `external/helpers/revealer.lua` | the same three via `vim.fn.jobstart` | `vim.fn.jobstart`, plus `lib.nvim.cross.reveal_in_fm` | `external_spec.lua` |
 | `resolvers/common/tailsearch.lua` | `git -C <dir> rev-parse --show-toplevel` | `vim.system` | `tailsearch_spec.lua` |
 | `truncated/finder.lua` | `fd` / `fdfind` / `rg` | `vim.fn.executable` + `vim.system` | `truncated_spec.lua` |

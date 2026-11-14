@@ -124,7 +124,7 @@ return function(H)
   H.check("opener: open.nvim takes precedence and gets a 'path=' argument", function()
     local calls = {}
     H.with_modules({
-      open_nvim = {
+      open = { -- open.nvim's module is `open`
         open = function(handler, arg)
           calls[#calls + 1] = { handler, arg }
         end,
@@ -146,7 +146,7 @@ return function(H)
   H.check("opener: a throwing open.nvim falls through to the built-in chain", function()
     local lib_calls = {}
     H.with_modules({
-      open_nvim = {
+      open = { -- open.nvim's module is `open`
         open = function()
           error("open.nvim exploded")
         end,
@@ -161,14 +161,14 @@ return function(H)
         H.eq(opener.open_with_system("/tmp/a.pdf"), true)
       end)
       H.same(lib_calls, { "/tmp/a.pdf" }, "lib.nvim's opener got the target")
-      H.match(H.notify_text(notes), "open_nvim%.open%(%) failed", "and the user was told why")
+      H.match(H.notify_text(notes), "open%.nvim's open%(%) failed", "and the user was told why")
     end, { unload = { "gopath.external.helpers.opener" } })
     H.fresh("gopath.external.helpers.opener")
   end)
 
   H.check("opener: lib.nvim's opener is tried before the minimal per-OS one", function()
     H.with_modules({
-      open_nvim = false,
+      open = false,
       ["lib.nvim.cross.open_default"] = function()
         return true
       end,
@@ -191,7 +191,7 @@ return function(H)
     function()
       local argv
       H.with_modules({
-        open_nvim = false,
+        open = false,
         ["lib.nvim.cross.open_default"] = function()
           return false
         end,
@@ -217,7 +217,7 @@ return function(H)
   H.check("opener: without lib.nvim at all, the minimal per-OS argv is used directly", function()
     local argv, opts
     H.with_modules({
-      open_nvim = false,
+      open = false,
       ["lib.nvim.cross.open_default"] = false,
     }, function()
       local opener = require("gopath.external.helpers.opener")
@@ -239,7 +239,7 @@ return function(H)
   if vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1 then
     H.check("opener (Windows): explorer.exe receives a backslash path, not a mixed one", function()
       local argv
-      H.with_modules({ open_nvim = false, ["lib.nvim.cross.open_default"] = false }, function()
+      H.with_modules({ open = false, ["lib.nvim.cross.open_default"] = false }, function()
         local opener = require("gopath.external.helpers.opener")
         H.with_field(vim, "system", function(cmd)
           argv = cmd
@@ -266,7 +266,7 @@ return function(H)
         -- lib.nvim is installed). The sibling revealer.lua writes the same gsub
         -- inside a concatenation, which truncates it to one value, and is fine.
         local argv
-        H.with_modules({ open_nvim = false, ["lib.nvim.cross.open_default"] = false }, function()
+        H.with_modules({ open = false, ["lib.nvim.cross.open_default"] = false }, function()
           local opener = require("gopath.external.helpers.opener")
           H.with_field(vim, "system", function(cmd)
             argv = cmd
@@ -284,7 +284,7 @@ return function(H)
   end
 
   H.check("opener: a vim.system that throws is reported, not propagated", function()
-    H.with_modules({ open_nvim = false, ["lib.nvim.cross.open_default"] = false }, function()
+    H.with_modules({ open = false, ["lib.nvim.cross.open_default"] = false }, function()
       local opener = require("gopath.external.helpers.opener")
       H.with_field(vim, "system", function()
         error("spawn refused")

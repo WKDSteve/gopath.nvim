@@ -135,7 +135,7 @@ end
 ---@internal
 local function check_open_nvim()
   start_s("open.nvim")
-  if require_ok("open_nvim") then
+  if require_ok("open") then
     ok_s("open.nvim installed — external files routed through its 'default' handler (WSL-aware)")
   else
     info_s(
