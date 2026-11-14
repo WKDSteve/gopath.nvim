@@ -117,6 +117,7 @@ gopath.nvim is released under the [MIT License](https://opensource.org/licenses/
 
 - [filetree.nvim](https://github.com/WKDSteve/filetree.nvim): The create-on-missing dialog of gopath.nvim offers 'Open in filetree', and `open_filetree` reveals a resolved path there, when filetree.nvim is set up. ([picture](assets/graphs/pair/gopath.nvim--filetree.nvim.png))
 - [images.nvim](https://github.com/WKDSteve/images.nvim): gopath.nvim opens an image through images.nvim when it is installed (`gopath.external.images`). ([picture](assets/graphs/pair/gopath.nvim--images.nvim.png))
+- [open.nvim](https://github.com/WKDSteve/open.nvim): gopath.nvim hands a file it opens outside Neovim to the `default` handler of open.nvim (WSL-aware, shared handlers), when it is installed. ([picture](assets/graphs/pair/gopath.nvim--open.nvim.png))
 - [pdfport.nvim](https://github.com/WKDSteve/pdfport.nvim): gopath.nvim opens a PDF through pdfport.nvim when it is installed (`gopath.external.pdf`). ([picture](assets/graphs/pair/gopath.nvim--pdfport.nvim.png))
 - [tasks.nvim](https://github.com/WKDSteve/tasks.nvim): gopath.nvim turns a task id under the cursor into its task file with the resolver of tasks.nvim (`tasks_nvim.resolve`). ([picture](assets/graphs/pair/gopath.nvim--tasks.nvim.png))
 - [ui.nvim](https://github.com/WKDSteve/ui.nvim): When a file is not found, gopath.nvim offers alternates in a selection of the kit of ui.nvim (`ui.kit`). ([picture](assets/graphs/pair/gopath.nvim--ui.nvim.png))
