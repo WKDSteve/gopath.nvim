@@ -161,10 +161,13 @@ function M.open_with_system(path)
   if not path or path == "" then return false end
 
   if open_nvim then
-    local ok, err = pcall(open_nvim.open, "default", "path=" .. path)
-    if ok then return true end
+    -- open() reports a failed handler as `false, err` without throwing; nil means its picker took
+    -- the choice over and opens later, which counts as handled.
+    local ok, opened, why = pcall(open_nvim.open, "default", "path=" .. path)
+    if ok and opened ~= false then return true end
+    local reason = ok and (why or "no handler opened it") or opened
     LOG.warn(
-      "open.nvim's open() failed: " .. tostring(err) .. " — falling back to built-in opener"
+      "open.nvim's open() failed: " .. tostring(reason) .. " — falling back to built-in opener"
     )
   end
 

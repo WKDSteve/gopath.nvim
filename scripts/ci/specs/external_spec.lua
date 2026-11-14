@@ -166,6 +166,53 @@ return function(H)
     H.fresh("gopath.external.helpers.opener")
   end)
 
+  H.check(
+    "opener: open.nvim answering false (no handler opened it) falls through too, with its reason",
+    function()
+      local lib_calls = {}
+      H.with_modules({
+        open = {
+          open = function()
+            return false, "no handler for this file"
+          end,
+        },
+        ["lib.nvim.cross.open_default"] = function(target)
+          lib_calls[#lib_calls + 1] = target
+          return true
+        end,
+      }, function()
+        local opener = require("gopath.external.helpers.opener")
+        local notes = H.capture_notify(function()
+          H.eq(opener.open_with_system("/tmp/a.pdf"), true)
+        end)
+        H.same(lib_calls, { "/tmp/a.pdf" }, "lib.nvim's opener got the target")
+        H.match(
+          H.notify_text(notes),
+          "no handler for this file",
+          "and the user was told open.nvim's reason"
+        )
+      end, { unload = { "gopath.external.helpers.opener" } })
+      H.fresh("gopath.external.helpers.opener")
+    end
+  )
+
+  H.check("opener: open.nvim deferring to its picker (nil) counts as handled", function()
+    H.with_modules({
+      open = {
+        open = function()
+          return nil
+        end,
+      },
+      ["lib.nvim.cross.open_default"] = function()
+        error("open.nvim's picker has the choice; nothing else may open it")
+      end,
+    }, function()
+      local opener = require("gopath.external.helpers.opener")
+      H.eq(opener.open_with_system("/tmp/a.pdf"), true)
+    end, { unload = { "gopath.external.helpers.opener" } })
+    H.fresh("gopath.external.helpers.opener")
+  end)
+
   H.check("opener: lib.nvim's opener is tried before the minimal per-OS one", function()
     H.with_modules({
       open = false,
