@@ -138,7 +138,7 @@ local state = {
   capped = false, -- The last build stopped at `config.max_paths`
   unusable = false, -- The file on disk was read and rejected (unparseable, other roots)
   rebuild_asked = false, -- `search` already started the one rebuild this `unusable` verdict gets
-  saved = nil, -- { file, roots, paths } of the index last written to (or read from / confirmed on) disk
+  saved = nil, -- { file, roots, paths, size } of the index last written to (or read from / confirmed on) disk
 }
 
 ---Whether the "path cache is capped" warning was already shown this session.
@@ -504,7 +504,8 @@ local function prune_stale_cache_files()
 end
 
 ---Whether `state.paths` is the index `state.saved` says is in `file` for `roots`, and that file's age was moved to
----now (the index is confirmed, not rewritten).
+---now (the index is confirmed, not rewritten). The file must still have the size it had then: every editor with the
+---same roots shares it, and one that wrote another list in between must not have its list confirmed as ours.
 ---@param file string
 ---@param roots string `config.scan_roots` joined by "\n"
 ---@return boolean
@@ -517,8 +518,9 @@ local function unchanged_on_disk(file, roots)
     if a[i] ~= b[i] then return false end
   end
   local st = uv.fs_stat(file)
+  if not (st and st.type == "file" and st.size == saved.size) then return false end
   local now = os.time()
-  return st ~= nil and st.type == "file" and uv.fs_utime(file, now, now) == true
+  return uv.fs_utime(file, now, now) == true
 end
 
 ---Save cache to disk for persistence across sessions
@@ -545,7 +547,8 @@ function M._save_to_disk()
 
   local ok, err = require("lib.nvim.fs.json").write(config.cache_file, data)
   if ok then
-    state.saved = { file = file, roots = roots, paths = state.paths }
+    local st = uv.fs_stat(file)
+    state.saved = { file = file, roots = roots, paths = state.paths, size = st and st.size }
     prune_stale_cache_files()
   else
     LOG.error("Failed to write cache file: " .. tostring(err))
@@ -613,6 +616,7 @@ function M.load_from_disk()
     file = config.cache_file,
     roots = table.concat(config.scan_roots or {}, "\n"),
     paths = paths,
+    size = st and st.size,
   }
   reindex()
 

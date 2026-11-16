@@ -483,6 +483,15 @@ return function(H)
           H.write(root .. "/d01/new.lua", { "" })
           build()
           H.eq(writes, 2, "a new file is written")
+
+          -- another editor with the same roots wrote its own list in between: ours is written again, not
+          -- confirmed by touching a file that holds somebody else's index
+          H.write(
+            file,
+            { vim.json.encode({ paths = { "elsewhere.lua" }, scan_roots = { root }, version = 1 }) }
+          )
+          build()
+          H.eq(writes, 3, "a file another editor rewrote is written again")
         end)
       end)
     end
