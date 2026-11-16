@@ -151,6 +151,7 @@ local KNOWN = {
     live_search_fallback = true,
     similarity_threshold = true,
     cache_roots = "string_list",
+    index_home = true,
     max_depth = "number",
     max_paths = "number",
     excluded_dirs = "string_list",

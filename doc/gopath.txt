@@ -398,12 +398,18 @@ truncated = {
   max_cache_age          = 3600,
   live_search_fallback   = true,
   cache_roots            = nil,
+  index_home             = false,
   max_depth              = 6,
   max_paths              = 300000,
   excluded_dirs          = { ".git", "node_modules", ... },
   auto_rebuild_on_save   = false,
 }
     "..." and "..." prefixed truncated path resolution.
+
+    `cache_roots = nil` auto-detects the roots: the working directory, the
+    config, data and cache folders and the git root.  A candidate that is the
+    home folder or a folder above it (a drive, `C:\Users`) is left out unless
+    `index_home = true`.
 
                                                      *gopath-config-mappings*
 mappings = {

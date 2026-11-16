@@ -184,7 +184,10 @@ require("gopath").setup({
     max_cache_age          = 3600,  -- seconds before cache is considered stale
     live_search_fallback   = true,
     similarity_threshold   = 75,
-    cache_roots            = nil,   -- nil = auto-detect drives/stdpaths
+    cache_roots            = nil,   -- nil = auto-detect (cwd, stdpaths, git root)
+    -- Auto-detect leaves the home folder (and a drive, C:\Users) out: a session started there indexed the whole
+    -- profile. true takes it as a root again.
+    index_home             = false,
     max_depth              = 6,
     max_paths              = 300000, -- most files one cache build indexes
     excluded_dirs          = { ".git", ".github", "node_modules", "target", "build", ".cache", "venv" },

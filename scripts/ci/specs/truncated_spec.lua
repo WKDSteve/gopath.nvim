@@ -350,9 +350,9 @@ return function(H)
     vim.fn.mkdir(project, "p")
     local cwd = vim.fn.getcwd()
     ---Whether a session started in `dir` takes `root` as a default root.
-    local function indexes(dir, root)
+    local function indexes(dir, root, opts)
       vim.cmd.cd(vim.fn.fnameescape(dir))
-      cache.setup({})
+      cache.setup(opts or {})
       local want = root:gsub("\\", "/"):lower()
       for _, r in ipairs(cache._get_config().scan_roots) do
         if r:gsub("\\", "/"):lower() == want then return true end
@@ -366,6 +366,14 @@ return function(H)
       H.truthy(#cache._get_config().scan_roots > 0, "the editor's own folders stay roots")
       H.eq(indexes(base, base), false, "a folder above the home folder neither")
       H.eq(indexes(project, project), true, "a project below it is indexed")
+      -- truncated.index_home: the user asks for the profile in the index
+      H.eq(
+        indexes(home, home, { index_home = true }),
+        true,
+        "index_home = true indexes the home folder"
+      )
+      H.eq(indexes(base, base, { index_home = true }), true, "and a folder above it")
+      H.eq(indexes(home, home), false, "a later setup without it does not keep it")
     end)
     vim.cmd.cd(vim.fn.fnameescape(cwd))
     cache.setup({ roots = { "/project/a" } })

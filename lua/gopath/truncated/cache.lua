@@ -176,6 +176,8 @@ end
 
 ---Setup cache configuration from user options
 ---Called during gopath.setup()
+---`opts.index_home = true` (`truncated.index_home`) lets the home folder and the folders above it be default roots
+---again; it only matters without `opts.roots`.
 ---@param opts table|nil User configuration for truncated.cache_roots
 function M.setup(opts)
   opts = opts or {}
@@ -219,8 +221,14 @@ function M.setup(opts)
       git_root, -- git repository root (if in one)
     }
     config.scan_roots = {}
+    local index_home = opts.index_home == true
     for _, p in ipairs(candidates) do
-      if type(p) == "string" and p ~= "" and vim.fn.isdirectory(p) == 1 and not holds_home(p) then
+      if
+        type(p) == "string"
+        and p ~= ""
+        and vim.fn.isdirectory(p) == 1
+        and (index_home or not holds_home(p))
+      then
         table.insert(config.scan_roots, p)
       end
     end

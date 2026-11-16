@@ -100,8 +100,8 @@ conservative — we do **not** index a whole drive by default):
 
 A candidate that is the **home folder or a folder above it** (a drive, `C:\Users`) is left out: a session started in
 the home folder used to index the whole profile up to the cap (300,000 paths, a 28 MB file rewritten in about a
-second on every refresh). It then indexes only the editor's own folders. Set `truncated.cache_roots` to index the
-profile anyway.
+second on every refresh). It then indexes only the editor's own folders. `truncated.index_home = true` takes such
+a folder as a default root again; `truncated.cache_roots` indexes whatever it lists.
 
 Each root is walked up to `truncated.max_depth` levels deep (default **6**),
 skipping `truncated.excluded_dirs` (`.git`, `.github`, `node_modules`, `target`,
@@ -295,6 +295,7 @@ require("gopath").setup({
     live_search_fallback   = true,   -- fall back to a live search on cache miss
     similarity_threshold   = 75,     -- 0–100; filename similarity for disambiguation
     cache_roots            = nil,    -- nil = auto-detect (cwd, stdpaths, git root)
+    index_home             = false,  -- auto-detect may take the home folder (or one above it) as a root
     max_depth              = 6,      -- max directory depth per root
     max_paths              = 300000, -- most files one build indexes (shallow levels first)
     excluded_dirs          = { ".git", ".github", "node_modules", "target", "build", ".cache", "venv" },

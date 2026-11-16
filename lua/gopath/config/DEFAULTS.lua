@@ -130,6 +130,9 @@ return {
     live_search_fallback = true,
     similarity_threshold = 75,
     cache_roots = nil,
+    -- Whether a session started in the home folder (or a drive, `C:\Users`) indexes it as a default root. Off:
+    -- the profile filled the cache up to `max_paths` (300,000 paths, a 28 MB file rewritten on every refresh).
+    index_home = false,
     max_depth = 6,
     -- Most file paths one cache build indexes (breadth-first, so the shallow
     -- levels of every root survive). Bounds the size of the cache file and the

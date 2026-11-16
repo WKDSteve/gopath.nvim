@@ -101,6 +101,7 @@
 ---@field live_search_fallback boolean Use fd/rg/find if cache misses
 ---@field similarity_threshold number For multiple match selection
 ---@field cache_roots table|nil
+---@field index_home boolean Default: false. Index the home folder (or a folder above it) as a default root
 ---@field max_depth number Maximum directory depth to scan
 ---@field max_paths number Most file paths one cache build indexes (default 300000)
 ---@field excluded_dirs string[]|nil Directories to skip
