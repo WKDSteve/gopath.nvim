@@ -995,10 +995,14 @@ return function(H)
               cache_roots = { "/r" },
               excluded_dirs = { "x" },
               index_home = true,
+              extra_roots = { "/e" },
+              excluded_paths = { "/x" },
             },
           })
           H.same(seen.setup.roots, { "/r" })
           H.eq(seen.setup.index_home, true, "truncated.index_home reaches the cache")
+          H.same(seen.setup.extra_roots, { "/e" }, "and truncated.extra_roots")
+          H.same(seen.setup.excluded_paths, { "/x" }, "and truncated.excluded_paths")
           H.eq(seen.setup.max_depth, 4)
           H.same(seen.setup.excluded_dirs, { "x" })
           -- Not read in setup(): about 30 ms of the VeryLazy wave for an index

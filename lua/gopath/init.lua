@@ -32,6 +32,8 @@ local function _setup_cache(config)
     max_paths = tcfg.max_paths,
     excluded_dirs = tcfg.excluded_dirs,
     index_home = tcfg.index_home,
+    extra_roots = tcfg.extra_roots,
+    excluded_paths = tcfg.excluded_paths,
   })
 
   -- The persisted index is NOT read here. Reading and decoding it cost about

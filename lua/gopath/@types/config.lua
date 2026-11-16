@@ -102,6 +102,8 @@
 ---@field similarity_threshold number For multiple match selection
 ---@field cache_roots table|nil
 ---@field index_home boolean Default: false. Index the home folder (or a folder above it) as a default root
+---@field extra_roots string[]|nil Folders indexed on top of the roots
+---@field excluded_paths string[]|nil Folders (full paths) never indexed, as a root or below one
 ---@field max_depth number Maximum directory depth to scan
 ---@field max_paths number Most file paths one cache build indexes (default 300000)
 ---@field excluded_dirs string[]|nil Directories to skip

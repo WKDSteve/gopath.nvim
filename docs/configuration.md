@@ -188,6 +188,8 @@ require("gopath").setup({
     -- Auto-detect leaves the home folder (and a drive, C:\Users) out: a session started there indexed the whole
     -- profile. true takes it as a root again.
     index_home             = false,
+    extra_roots            = nil,   -- folders indexed on top of the roots, e.g. { "~/notes" }
+    excluded_paths         = nil,   -- folders never indexed (full paths, also below a root), e.g. { "~/Downloads" }
     max_depth              = 6,
     max_paths              = 300000, -- most files one cache build indexes
     excluded_dirs          = { ".git", ".github", "node_modules", "target", "build", ".cache", "venv" },

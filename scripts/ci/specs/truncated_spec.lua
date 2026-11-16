@@ -380,6 +380,71 @@ return function(H)
     if not ok then error(err, 0) end
   end)
 
+  -- truncated.extra_roots / truncated.excluded_paths: single folders named by full path.
+  H.check(
+    "setup: extra_roots are indexed on top, excluded_paths never, as a root or below one",
+    function()
+      local root = H.tmpdir()
+      H.write(root .. "/keep.lua", { "" })
+      H.write(root .. "/Downloads/big.bin", { "" })
+      H.write(root .. "/sub/Downloads/inner.lua", { "" })
+      local extra = H.tmpdir()
+      H.write(extra .. "/notes.md", { "" })
+      local gone = H.tmpdir()
+      H.write(gone .. "/x.lua", { "" })
+
+      local joined = table
+        .concat(
+          build_over({ root, gone }, {
+            extra_roots = { extra, "/does/not/exist" },
+            excluded_paths = { root .. "/Downloads", gone },
+          }),
+          "\n"
+        )
+        :gsub("\\", "/")
+      H.match(joined, "/keep%.lua", "the root is indexed")
+      H.match(joined, "/notes%.md", "an extra root is indexed too")
+      H.no_match(joined, "/Downloads/big", "an excluded folder below a root is not")
+      H.match(
+        joined,
+        "/sub/Downloads/inner%.lua",
+        "a folder of the same name elsewhere is (a path, not a name)"
+      )
+      H.no_match(joined, "/x%.lua", "an excluded root is not scanned at all")
+      local roots = table.concat(cache._get_config().scan_roots, "\n")
+      H.no_match(roots, "exist", "an extra root that does not exist is left out")
+
+      cache.setup(vim.tbl_extend("force", BASE_SETUP, { roots = { root } }))
+      H.eq(#cache._get_config().excluded_paths, 0, "the lists are per setup(), not sticky")
+    end
+  )
+
+  H.check(
+    "setup: the excluded folders key the cache file, so a changed list never serves the old index",
+    function()
+      local root = H.tmpdir()
+      cache.setup({ roots = { root } })
+      local plain = cache._get_config().cache_file
+      cache.setup({ roots = { root }, excluded_paths = { root .. "/big" } })
+      local with_exclusion = cache._get_config().cache_file
+      H.truthy(plain ~= with_exclusion, "another exclusion list, another file")
+      cache.setup({ roots = { root } })
+      H.eq(cache._get_config().cache_file, plain, "no exclusion keeps the file name of before")
+
+      -- a file written without the exclusion, hand-copied under the new name, is rejected on load
+      local store = {
+        readable = true,
+        data = { paths = { root .. "/big/a.lua" }, scan_roots = { root }, version = 1 },
+      }
+      H.with_modules(fake_persistence(store), function()
+        cache.setup({ roots = { root }, excluded_paths = { root .. "/big" } })
+        H.eq(cache.load_from_disk(), false, "an index without the exclusion is not adopted")
+        store.data.excluded_paths = { root .. "/big" }
+        H.eq(cache.load_from_disk(), true, "the same index with it is")
+      end)
+    end
+  )
+
   H.check("_save_to_disk: an unwritable cache file is reported, not raised", function()
     local store = { readable = false, write_ok = false }
     H.with_modules(fake_persistence(store), function()

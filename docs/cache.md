@@ -103,6 +103,11 @@ the home folder used to index the whole profile up to the cap (300,000 paths, a 
 second on every refresh). It then indexes only the editor's own folders. `truncated.index_home = true` takes such
 a folder as a default root again; `truncated.cache_roots` indexes whatever it lists.
 
+Single folders can be named on top of that: `truncated.extra_roots` are indexed in addition to the roots
+(auto-detected or `cache_roots`), `truncated.excluded_paths` are never indexed — neither as a root nor anywhere below
+one. Unlike `excluded_dirs`, which matches a folder *name* anywhere, both take full paths (`~` and `$VAR` are
+expanded). The excluded folders are part of the cache file's key, so changing them never serves the old index.
+
 Each root is walked up to `truncated.max_depth` levels deep (default **6**),
 skipping `truncated.excluded_dirs` (`.git`, `.github`, `node_modules`, `target`,
 `build`, `.cache`, `venv`). One build indexes at most `truncated.max_paths` files (default
@@ -296,6 +301,8 @@ require("gopath").setup({
     similarity_threshold   = 75,     -- 0–100; filename similarity for disambiguation
     cache_roots            = nil,    -- nil = auto-detect (cwd, stdpaths, git root)
     index_home             = false,  -- auto-detect may take the home folder (or one above it) as a root
+    extra_roots            = nil,    -- folders indexed on top of the roots, e.g. { "~/notes" }
+    excluded_paths         = nil,    -- folders never indexed (full paths), e.g. { "~/Downloads" }
     max_depth              = 6,      -- max directory depth per root
     max_paths              = 300000, -- most files one build indexes (shallow levels first)
     excluded_dirs          = { ".git", ".github", "node_modules", "target", "build", ".cache", "venv" },

@@ -399,6 +399,8 @@ truncated = {
   live_search_fallback   = true,
   cache_roots            = nil,
   index_home             = false,
+  extra_roots            = nil,
+  excluded_paths         = nil,
   max_depth              = 6,
   max_paths              = 300000,
   excluded_dirs          = { ".git", "node_modules", ... },
@@ -409,7 +411,9 @@ truncated = {
     `cache_roots = nil` auto-detects the roots: the working directory, the
     config, data and cache folders and the git root.  A candidate that is the
     home folder or a folder above it (a drive, `C:\Users`) is left out unless
-    `index_home = true`.
+    `index_home = true`.  `extra_roots` adds folders to the roots,
+    `excluded_paths` lists folders that are never indexed, as a root or
+    below one (full paths; `~` and `$VAR` are expanded).
 
                                                      *gopath-config-mappings*
 mappings = {

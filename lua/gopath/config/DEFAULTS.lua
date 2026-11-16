@@ -133,6 +133,11 @@ return {
     -- Whether a session started in the home folder (or a drive, `C:\Users`) indexes it as a default root. Off:
     -- the profile filled the cache up to `max_paths` (300,000 paths, a 28 MB file rewritten on every refresh).
     index_home = false,
+    -- Folders indexed on top of the roots (auto-detected or `cache_roots`), e.g. { "~/notes" }.
+    extra_roots = nil,
+    -- Folders never indexed, as a root or below one, e.g. { "~/Downloads" }. Unlike `excluded_dirs`
+    -- (names, anywhere) these are full paths; `~` and `$VAR` are expanded.
+    excluded_paths = nil,
     max_depth = 6,
     -- Most file paths one cache build indexes (breadth-first, so the shallow
     -- levels of every root survive). Bounds the size of the cache file and the

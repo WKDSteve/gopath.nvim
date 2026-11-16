@@ -49,7 +49,29 @@ local function roots_fingerprint(roots)
   return table.concat(normalized, "\n")
 end
 
+local IS_WIN = vim.fn.has("win32") == 1
+
+---A folder path in the form paths are compared in: forward slashes, no trailing slash, lowercased on Windows.
+---Pure Lua (the scan calls it from a libuv fast context).
+---@param p string
+---@return string
+local function norm_dir(p)
+  p = p:gsub("\\", "/"):gsub("/+$", "")
+  if IS_WIN then p = p:lower() end
+  return p
+end
+
+---Whether the normalized folder `d` is `parent` or lies below it.
+---@param d string
+---@param parent string
+---@return boolean
+local function is_under(d, parent)
+  return d == parent or d:sub(1, #parent + 1) == parent .. "/"
+end
+
 ---@class CacheConfig
+---@field excluded_paths? string[] Folders (full paths) never indexed, with everything below them
+---@field excluded_set? table<string, true> `excluded_paths` normalized (`norm_dir`), for the scan
 ---@field max_depth? integer Maximum directory depth to scan
 ---@field max_concurrency? integer Max directories scanned concurrently (bounds open handles)
 ---@field excluded_dirs? string[] Directories to skip during scan
@@ -104,7 +126,27 @@ local config = {
 
   -- Default scan roots (will be set in M.setup())
   scan_roots = {},
+
+  -- `truncated.excluded_paths` (set in M.setup())
+  excluded_paths = {},
+  excluded_set = {},
 }
+
+---What the persisted index depends on besides its depth and name exclusions: the roots and the excluded folders
+---(`!`-prefixed), order-independent. Names the cache file and is revalidated on load.
+---@param roots string[]
+---@param excluded string[]|nil
+---@return string
+local function cache_key(roots, excluded)
+  local entries = {}
+  for _, r in ipairs(roots) do
+    entries[#entries + 1] = r
+  end
+  for _, e in ipairs(excluded or {}) do
+    entries[#entries + 1] = "!" .. e
+  end
+  return roots_fingerprint(entries)
+end
 
 ---Recompute `config.cache_file` from the current `config.scan_roots` (PERF-46).
 ---Must be called after ANY mutation of `config.scan_roots` -- not just from
@@ -119,7 +161,7 @@ local config = {
 local function refresh_cache_file()
   config.cache_file = vim.fn.stdpath("cache")
     .. "/gopath_fs_cache_"
-    .. short_hash(roots_fingerprint(config.scan_roots))
+    .. short_hash(cache_key(config.scan_roots, config.excluded_paths))
     .. ".json"
 end
 
@@ -165,19 +207,14 @@ end
 local function holds_home(dir)
   local home = uv.os_homedir()
   if type(home) ~= "string" or home == "" then return false end
-  local function norm(p)
-    p = p:gsub("\\", "/"):gsub("/+$", "")
-    if vim.fn.has("win32") == 1 then p = p:lower() end
-    return p
-  end
-  local d, h = norm(dir), norm(home)
-  return h == d or h:sub(1, #d + 1) == d .. "/"
+  return is_under(norm_dir(home), norm_dir(dir))
 end
 
 ---Setup cache configuration from user options
 ---Called during gopath.setup()
 ---`opts.index_home = true` (`truncated.index_home`) lets the home folder and the folders above it be default roots
----again; it only matters without `opts.roots`.
+---again; it only matters without `opts.roots`. `opts.extra_roots` (`truncated.extra_roots`) are indexed on top of the
+---roots, `opts.excluded_paths` (`truncated.excluded_paths`) never: neither as a root nor below one.
 ---@param opts table|nil User configuration for truncated.cache_roots
 function M.setup(opts)
   opts = opts or {}
@@ -234,6 +271,39 @@ function M.setup(opts)
     end
     config.scan_roots = require("lib.lua.tables").dedup_list(config.scan_roots)
   end
+
+  -- === Folders asked for by name (truncated.extra_roots / truncated.excluded_paths) ===
+  -- Per call, not sticky: gopath.setup always passes both. `~` and `$VAR` are expanded.
+  local excluded, excluded_set = {}, {}
+  for _, p in ipairs(type(opts.excluded_paths) == "table" and opts.excluded_paths or {}) do
+    if type(p) == "string" and p ~= "" then
+      local full = vim.fn.expand(p)
+      excluded[#excluded + 1] = full
+      excluded_set[norm_dir(full)] = true
+    end
+  end
+  config.excluded_paths, config.excluded_set = excluded, excluded_set
+  for _, p in ipairs(type(opts.extra_roots) == "table" and opts.extra_roots or {}) do
+    if type(p) == "string" and p ~= "" then
+      local full = vim.fn.expand(p)
+      if vim.fn.isdirectory(full) == 1 then table.insert(config.scan_roots, full) end
+    end
+  end
+  if #excluded > 0 then
+    local kept = {}
+    for _, r in ipairs(config.scan_roots) do
+      local nr, out = norm_dir(r), false
+      for e in pairs(excluded_set) do
+        if is_under(nr, e) then
+          out = true
+          break
+        end
+      end
+      if not out then kept[#kept + 1] = r end
+    end
+    config.scan_roots = kept
+  end
+  config.scan_roots = require("lib.lua.tables").dedup_list(config.scan_roots)
 
   -- The persisted cache file is keyed by the scan roots it indexes (PERF-46):
   -- a single fixed path shared by every project meant that project B's
@@ -300,6 +370,8 @@ local function scan_roots_bounded(roots, on_done)
   local qhead = 1 -- queue read cursor (avoids table.remove shifts)
   local capped = false -- `config.max_paths` reached: collect and descend no further
   local max_paths = config.max_paths
+  local excluded_set = config.excluded_set or {}
+  local has_excluded = next(excluded_set) ~= nil
 
   for i = 1, #roots do
     queue[#queue + 1] = { dir = roots[i], depth = 0 }
@@ -331,7 +403,12 @@ local function scan_roots_bounded(roots, on_done)
           else
             capped = true
           end
-        elseif typ == "directory" and not is_excluded(name) and item.depth < config.max_depth then
+        elseif
+          typ == "directory"
+          and not is_excluded(name)
+          and item.depth < config.max_depth
+          and not (has_excluded and excluded_set[norm_dir(full_path)])
+        then
           queue[#queue + 1] = { dir = full_path, depth = item.depth + 1 }
         end
       end
@@ -532,7 +609,7 @@ end
 ---now (the index is confirmed, not rewritten). The file must still have the size it had then: every editor with the
 ---same roots shares it, and one that wrote another list in between must not have its list confirmed as ours.
 ---@param file string
----@param roots string `config.scan_roots` joined by "\n"
+---@param roots string `cache_key` of the configured roots and excluded folders
 ---@return boolean
 local function unchanged_on_disk(file, roots)
   local saved = state.saved
@@ -558,7 +635,7 @@ function M._save_to_disk()
   -- by a digest: Lua strings are interned, so an unchanged list costs a pointer comparison per path, where a
   -- sha256 over the joined list cost 10 ms at 22k paths and 115 ms at 300k on every save.
   local file = config.cache_file
-  local roots = table.concat(config.scan_roots or {}, "\n")
+  local roots = cache_key(config.scan_roots or {}, config.excluded_paths)
   if unchanged_on_disk(file, roots) then
     state.saved.paths = state.paths
     return true
@@ -567,6 +644,7 @@ function M._save_to_disk()
     paths = state.paths,
     last_built = state.last_built,
     scan_roots = config.scan_roots,
+    excluded_paths = (#config.excluded_paths > 0) and config.excluded_paths or nil,
     version = 1,
   }
 
@@ -610,7 +688,16 @@ function M.load_from_disk()
       if type(r) == "string" then persisted_roots[#persisted_roots + 1] = r end
     end
   end
-  if roots_fingerprint(persisted_roots) ~= roots_fingerprint(config.scan_roots) then
+  local persisted_excluded = {}
+  if type(data.excluded_paths) == "table" then
+    for _, e in ipairs(data.excluded_paths) do
+      if type(e) == "string" then persisted_excluded[#persisted_excluded + 1] = e end
+    end
+  end
+  if
+    cache_key(persisted_roots, persisted_excluded)
+    ~= cache_key(config.scan_roots, config.excluded_paths)
+  then
     state.unusable = true
     return false
   end
@@ -639,7 +726,7 @@ function M.load_from_disk()
   -- what is on disk now: a build that finds the same tree only touches the file (`_save_to_disk`)
   state.saved = {
     file = config.cache_file,
-    roots = table.concat(config.scan_roots or {}, "\n"),
+    roots = cache_key(config.scan_roots or {}, config.excluded_paths),
     paths = paths,
     size = st and st.size,
   }
