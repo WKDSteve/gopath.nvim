@@ -138,7 +138,7 @@ local state = {
   capped = false, -- The last build stopped at `config.max_paths`
   unusable = false, -- The file on disk was read and rejected (unparseable, other roots)
   rebuild_asked = false, -- `search` already started the one rebuild this `unusable` verdict gets
-  saved = nil, -- { file, digest } of the index last written to (or confirmed on) disk
+  saved = nil, -- { file, roots, paths } of the index last written to (or read from / confirmed on) disk
 }
 
 ---Whether the "path cache is capped" warning was already shown this session.
@@ -257,13 +257,20 @@ end
 --- tree size. This avoids EMFILE / threadpool starvation on very large trees
 --- while still keeping the whole scan off the main loop.
 ---
+--- **The paths come in a fixed order: directory by directory, the directories sorted.** The callbacks
+--- finish in whatever order the threadpool gets to them, so collecting files as they arrive gave every
+--- build of the same tree another order -- and `_save_to_disk`, which skips an index that is the one on
+--- disk, never saw the same index twice (every build wrote the whole file again). Sorting the
+--- directories, not the files, keeps it cheap: there are about ten times fewer of them.
+---
 ---@internal
 ---@param roots string[] Root directories to scan
 ---@param on_done fun(paths: string[], capped: boolean) Called once with every discovered file path;
 ---  `capped` is true when the scan stopped at `config.max_paths` before it had seen everything
 local function scan_roots_bounded(roots, on_done)
   local queue = {} -- pending { dir=string, depth=integer } items
-  local results = {} -- accumulated file paths
+  local chunks = {} -- { dir=string, files=string[] } per scanned directory, in completion order
+  local count = 0 -- files collected so far (all chunks)
   local active = 0 -- in-flight fs_scandir operations
   local qhead = 1 -- queue read cursor (avoids table.remove shifts)
   local capped = false -- `config.max_paths` reached: collect and descend no further
@@ -286,14 +293,16 @@ local function scan_roots_bounded(roots, on_done)
         return
       end
 
+      local files = {}
       while true do
         local name, typ = uv.fs_scandir_next(handle)
         if not name then break end
 
         local full_path = item.dir .. "/" .. name
         if typ == "file" then
-          if #results < max_paths then
-            results[#results + 1] = full_path
+          if count < max_paths then
+            count = count + 1
+            files[#files + 1] = full_path
           else
             capped = true
           end
@@ -302,9 +311,27 @@ local function scan_roots_bounded(roots, on_done)
         end
       end
 
+      if #files > 0 then chunks[#chunks + 1] = { dir = item.dir, files = files } end
       active = active - 1
       pump()
     end)
+  end
+
+  ---Every collected path, the directories in sorted order (see above).
+  ---@return string[]
+  local function in_order()
+    table.sort(chunks, function(a, b)
+      return a.dir < b.dir
+    end)
+    local results, n = {}, 0
+    for c = 1, #chunks do
+      local files = chunks[c].files
+      for i = 1, #files do
+        n = n + 1
+        results[n] = files[i]
+      end
+    end
+    return results
   end
 
   ---Fill available concurrency slots from the queue; finish when fully drained.
@@ -321,13 +348,13 @@ local function scan_roots_bounded(roots, on_done)
       scan_one(item)
     end
 
-    if active == 0 and qhead > #queue then on_done(results, capped) end
+    if active == 0 and qhead > #queue then on_done(in_order(), capped) end
   end
 
   -- Empty input → complete immediately on next tick.
   if #queue == 0 then
     vim.schedule(function()
-      on_done(results, false)
+      on_done({}, false)
     end)
   else
     pump()
@@ -476,21 +503,38 @@ local function prune_stale_cache_files()
   end)
 end
 
+---Whether `state.paths` is the index `state.saved` says is in `file` for `roots`, and that file's age was moved to
+---now (the index is confirmed, not rewritten).
+---@param file string
+---@param roots string `config.scan_roots` joined by "\n"
+---@return boolean
+local function unchanged_on_disk(file, roots)
+  local saved = state.saved
+  if not (saved and saved.file == file and saved.roots == roots) then return false end
+  local a, b = state.paths, saved.paths
+  if #a ~= #b then return false end
+  for i = 1, #a do
+    if a[i] ~= b[i] then return false end
+  end
+  local st = uv.fs_stat(file)
+  local now = os.time()
+  return st ~= nil and st.type == "file" and uv.fs_utime(file, now, now) == true
+end
+
 ---Save cache to disk for persistence across sessions
 ---@private
 ---@return boolean written
 function M._save_to_disk()
   -- An index that is the one already on disk is not written again (a rebuild of an unchanged tree used to cost a
   -- full JSON encode and write, ~76 ms, in the editor thread): only the age moves, as the mtime of the file
-  -- (`needs_refresh` and `load_from_disk` read it).
-  local digest = vim.fn.sha256(
-    table.concat(state.paths, "\n") .. "\0" .. table.concat(config.scan_roots or {}, "\n")
-  )
+  -- (`needs_refresh` and `load_from_disk` read it). Compared path by path with the list last written or read, not
+  -- by a digest: Lua strings are interned, so an unchanged list costs a pointer comparison per path, where a
+  -- sha256 over the joined list cost 10 ms at 22k paths and 115 ms at 300k on every save.
   local file = config.cache_file
-  if state.saved and state.saved.file == file and state.saved.digest == digest then
-    local st = uv.fs_stat(file)
-    local now = os.time()
-    if st and st.type == "file" and uv.fs_utime(file, now, now) then return true end
+  local roots = table.concat(config.scan_roots or {}, "\n")
+  if unchanged_on_disk(file, roots) then
+    state.saved.paths = state.paths
+    return true
   end
   local data = {
     paths = state.paths,
@@ -501,7 +545,7 @@ function M._save_to_disk()
 
   local ok, err = require("lib.nvim.fs.json").write(config.cache_file, data)
   if ok then
-    state.saved = { file = file, digest = digest }
+    state.saved = { file = file, roots = roots, paths = state.paths }
     prune_stale_cache_files()
   else
     LOG.error("Failed to write cache file: " .. tostring(err))
@@ -564,6 +608,12 @@ function M.load_from_disk()
     state.last_built = st.mtime.sec
   end
   state.unusable, state.rebuild_asked = false, false
+  -- what is on disk now: a build that finds the same tree only touches the file (`_save_to_disk`)
+  state.saved = {
+    file = config.cache_file,
+    roots = table.concat(config.scan_roots or {}, "\n"),
+    paths = paths,
+  }
   reindex()
 
   return true

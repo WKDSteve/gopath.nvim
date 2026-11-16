@@ -407,6 +407,87 @@ return function(H)
     end)
   end)
 
+  -- The scan collected files in the order the threadpool finished the directories, so every build of the same tree
+  -- had another order, and the "unchanged index" check above never matched: every build still wrote the whole file
+  -- (telemetry 2026-11-16: 1059 saves, none of them skipped). The index comes directory by directory, sorted.
+  H.check("build_async: the index comes directory by directory, in sorted order", function()
+    local root = H.tmpdir()
+    H.write(root .. "/top.lua", { "" })
+    H.write(root .. "/a/deep/f1.lua", { "" }) -- breadth first, this came after b/f2.lua
+    H.write(root .. "/b/f2.lua", { "" })
+    for i = 1, 30 do
+      H.write(("%s/d%02d/x.lua"):format(root, i), { "" })
+      H.write(("%s/d%02d/sub/y.lua"):format(root, i), { "" })
+    end
+
+    local first = build_over({ root })
+    H.eq(#first, 63, "every file")
+    local previous = ""
+    for _, p in ipairs(first) do
+      local dir = p:match("^(.*)/[^/]+$")
+      H.truthy(dir >= previous, ("%s comes after the directory %s"):format(p, previous))
+      previous = dir
+    end
+    H.truthy(
+      vim.deep_equal(build_over({ root }), first),
+      "and a second build of the same tree has the same order"
+    )
+  end)
+
+  H.check(
+    "_save_to_disk: a rebuild of an unchanged tree only touches the file, also after a load",
+    function()
+      local root = H.tmpdir()
+      for i = 1, 20 do
+        H.write(("%s/d%02d/x.lua"):format(root, i), { "" })
+        H.write(("%s/d%02d/sub/y.lua"):format(root, i), { "" })
+      end
+      local file = H.tmpdir() .. "/gopath_fs_cache_aaaaaaaa.json"
+      cache.setup(vim.tbl_extend("force", BASE_SETUP, { roots = { root } }))
+      H.with_field(cache._get_config(), "cache_file", file, function()
+        local json = require("lib.nvim.fs.json")
+        local writes = 0
+        H.with_modules({
+          ["lib.nvim.fs.json"] = {
+            read = json.read,
+            write = function(...)
+              writes = writes + 1
+              return json.write(...)
+            end,
+          },
+        }, function()
+          local function build()
+            local done = false
+            cache.build_async(function()
+              done = true
+            end)
+            H.truthy(
+              H.wait(function()
+                return done
+              end),
+              "the async build finished"
+            )
+          end
+          build()
+          H.eq(writes, 1, "the first build writes")
+          build()
+          build()
+          H.eq(writes, 1, "the same tree again writes nothing")
+
+          -- the next session: the index comes from the file, the start build finds the same tree
+          cache._get_state().saved = nil
+          H.truthy(cache.load_from_disk(), "the file loads")
+          build()
+          H.eq(writes, 1, "a build after loading the same index writes nothing either")
+
+          H.write(root .. "/d01/new.lua", { "" })
+          build()
+          H.eq(writes, 2, "a new file is written")
+        end)
+      end)
+    end
+  )
+
   -- Every distinct scan-roots set owns its own cache file (PERF-46), so every new
   -- working directory used to leave one behind for good: 131 files, 564 MB.
   H.check("_save_to_disk: a cache file nobody rewrote for two weeks is pruned", function()

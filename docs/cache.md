@@ -155,11 +155,14 @@ needs no external tools (`fd`/`rg` are used only by the synchronous
   share a file on disk, and loading one back also revalidates its
   `scan_roots` field against the current configuration — a cache built for a
   different project is never adopted, even on a hash collision or a
-  hand-copied file. It is rewritten after each build and read by the first
-  lookup of a session, not by `setup()`. Until it has been read,
-  `needs_refresh` takes the file's mtime as the build time (`_save_to_disk`
-  writes it right after every build); no file means never built, and a file
-  that was read and rejected (unparseable, other roots) means rebuild.
+  hand-copied file. It is written after a build that found another index
+  than the one on disk, and read by the first lookup of a session, not by
+  `setup()`. A build that finds the same index (same paths in the same order;
+  the scan lists them directory by directory, the directories sorted, so the
+  same tree always gives the same list) only touches the file: its mtime is
+  the build time. Until it has been read, `needs_refresh` takes that mtime as
+  the build time; no file means never built, and a file that was read and
+  rejected (unparseable, other roots) means rebuild.
 - **Pruning:** every distinct root set owns a file, so every new working
   directory would leave one behind. After each successful write, the
   `gopath_fs_cache*.json` files next to the live one that nobody has rewritten
@@ -343,7 +346,9 @@ Approximate, order-of-magnitude figures (hardware- and tree-dependent):
 | Cache build, ~50 000 files | ~15 s (background) |
 | **Cache lookup** | **< 10 ms** |
 | Live search (async libuv walk) | ~100 ms – a few seconds, off the main loop |
-| On-disk cache size | ~100 KB per 10 000 files |
+| On-disk cache size | ~1 MB per 10 000 files |
+| Saving after a build, ~22 000 files (2 MB) | ~50–90 ms; ~0 ms when the index did not change |
+| Saving after a build, 300 000 files (28 MB, the `max_paths` cap) | ~0.8–1 s |
 
 The point of the design: builds are slow but **never block** the UI, while the
 lookups you actually do interactively are effectively instant.
