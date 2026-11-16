@@ -157,6 +157,23 @@ local function reindex()
   state.norm = norm
 end
 
+---Whether `dir` is the home folder or a folder above it (a drive, `C:\Users`). A session started there took it as a
+---default root and indexed the user profile up to `max_paths`: 300 000 paths, a 28 MB file written in the editor
+---thread (~1 s) on every refresh, every 10 minutes (telemetry 2026-11-16).
+---@param dir string
+---@return boolean
+local function holds_home(dir)
+  local home = uv.os_homedir()
+  if type(home) ~= "string" or home == "" then return false end
+  local function norm(p)
+    p = p:gsub("\\", "/"):gsub("/+$", "")
+    if vim.fn.has("win32") == 1 then p = p:lower() end
+    return p
+  end
+  local d, h = norm(dir), norm(home)
+  return h == d or h:sub(1, #d + 1) == d .. "/"
+end
+
 ---Setup cache configuration from user options
 ---Called during gopath.setup()
 ---@param opts table|nil User configuration for truncated.cache_roots
@@ -203,7 +220,7 @@ function M.setup(opts)
     }
     config.scan_roots = {}
     for _, p in ipairs(candidates) do
-      if type(p) == "string" and p ~= "" and vim.fn.isdirectory(p) == 1 then
+      if type(p) == "string" and p ~= "" and vim.fn.isdirectory(p) == 1 and not holds_home(p) then
         table.insert(config.scan_roots, p)
       end
     end

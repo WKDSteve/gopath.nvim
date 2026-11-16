@@ -341,6 +341,37 @@ return function(H)
     H.eq(cache._get_config().cache_file, file_a, "the same roots always produce the same file")
   end)
 
+  -- A session started in the home folder indexed the whole profile up to max_paths: 300 000 paths, a 28 MB file
+  -- rewritten (~1 s in the editor thread) on every refresh.
+  H.check("setup: the home folder and the folders above it are never a default root", function()
+    local base = H.tmpdir()
+    local home = base .. "/home"
+    local project = home .. "/project"
+    vim.fn.mkdir(project, "p")
+    local cwd = vim.fn.getcwd()
+    ---Whether a session started in `dir` takes `root` as a default root.
+    local function indexes(dir, root)
+      vim.cmd.cd(vim.fn.fnameescape(dir))
+      cache.setup({})
+      local want = root:gsub("\\", "/"):lower()
+      for _, r in ipairs(cache._get_config().scan_roots) do
+        if r:gsub("\\", "/"):lower() == want then return true end
+      end
+      return false
+    end
+    local ok, err = pcall(H.with_field, vim.loop, "os_homedir", function()
+      return home
+    end, function()
+      H.eq(indexes(home, home), false, "a session in the home folder does not index it")
+      H.truthy(#cache._get_config().scan_roots > 0, "the editor's own folders stay roots")
+      H.eq(indexes(base, base), false, "a folder above the home folder neither")
+      H.eq(indexes(project, project), true, "a project below it is indexed")
+    end)
+    vim.cmd.cd(vim.fn.fnameescape(cwd))
+    cache.setup({ roots = { "/project/a" } })
+    if not ok then error(err, 0) end
+  end)
+
   H.check("_save_to_disk: an unwritable cache file is reported, not raised", function()
     local store = { readable = false, write_ok = false }
     H.with_modules(fake_persistence(store), function()

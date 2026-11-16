@@ -98,11 +98,16 @@ conservative — we do **not** index a whole drive by default):
 | Neovim cache | `vim.fn.stdpath("cache")` |
 | Git repository root | nearest ancestor holding a `.git` marker, via `lib.nvim.fs.find_root` (if inside a repo) |
 
+A candidate that is the **home folder or a folder above it** (a drive, `C:\Users`) is left out: a session started in
+the home folder used to index the whole profile up to the cap (300,000 paths, a 28 MB file rewritten in about a
+second on every refresh). It then indexes only the editor's own folders. Set `truncated.cache_roots` to index the
+profile anyway.
+
 Each root is walked up to `truncated.max_depth` levels deep (default **6**),
 skipping `truncated.excluded_dirs` (`.git`, `.github`, `node_modules`, `target`,
 `build`, `.cache`, `venv`). One build indexes at most `truncated.max_paths` files (default
 **300000**). The walk is breadth-first, so when a root is huge — a session
-started in `%TEMP%` or in the profile directory, say — the shallow levels of
+started in `%TEMP%`, say — the shallow levels of
 every root survive the cut, the deeper ones are left to the live search, and a
 one-time warning names the cap. For scale: a normal session indexes ~35,000
 paths, a working directory of the profile directory ~207,000, and an unbounded
@@ -327,7 +332,7 @@ limit) — see the [configuration.md](configuration.md).
 - **Build feels heavy.** Lower `max_depth`, extend `excluded_dirs`, or pin
   `cache_roots` to just the directories you care about.
 - **"The path cache stopped at … files".** A scan root is huge (usually the
-  working directory: `%TEMP%`, the profile directory). Pin `cache_roots` to the
+  working directory, e.g. `%TEMP%`). Pin `cache_roots` to the
   project instead, or raise `max_paths` if you really want the whole tree
   indexed — at the price of a bigger JSON file and a slower first lookup.
 - **Want a wider net.** Set `cache_roots` explicitly (e.g. a whole project
