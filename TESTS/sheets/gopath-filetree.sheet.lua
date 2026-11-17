@@ -66,7 +66,13 @@ return {
       note = "no buffer was opened for the file",
     },
 
-    { lua = [[_G.on("src/other.lua")]] },
+    {
+      -- Not `_G.on`: its `only!` would close the tree. The scratch window keeps the focus after gT.
+      lua = [[vim.api.nvim_buf_set_lines(0, 0, -1, false, { "src/other.lua" })
+      vim.api.nvim_win_set_cursor(0, { 1, 0 })]],
+      note = "the next path in the same scratch buffer, the tree stays open",
+    },
+    { expect = [[_G.tree.is_open() and vim.api.nvim_get_current_win() ~= _G.tree.get_winid()]] },
     {
       keys = ":Gopath open filetree<CR>",
       note = "the command does the same with the tree already open",

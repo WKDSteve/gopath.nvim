@@ -15,7 +15,9 @@ return {
   steps = {
     {
       lua = [[dofile(vim.fn.getcwd() .. "/TESTS/sheets/_helpers.lua")
-      _G.setup()
+      -- The pipeline waits `lsp_timeout_ms` for the server (resolve_at_cursor has no per-call timeout); the
+      -- default 200 ms is too short for lua_ls on a busy machine.
+      _G.setup({ lsp_timeout_ms = 5000 })
       vim.opt.rtp:append(_G.DIR)
       _G.write("lua/proj/config.lua", {
         "local M = {}",
@@ -78,10 +80,13 @@ return {
     },
     { lua = [[_G.on_get()]] },
     {
-      expect = [[require("gopath.resolve").resolve_at_cursor({ timeout_ms = 5000 }).source == "lsp"]],
+      expect = [[(require("gopath.resolve").resolve_at_cursor() or {}).source == "lsp"]],
       note = "the answer comes from the language server, not the treesitter pass",
     },
-    { lua = [[_G.on_get()]] },
+    {
+      lua = [[_G.setup({ lsp_timeout_ms = 5000, order = { "lsp" } }); _G.on_get()]],
+      note = 'order = { "lsp" }: only the language server can answer gF now (treesitter finds line 7 as well)',
+    },
     { keys = "gF", note = "gF on get: config.lua at the line of function M.get(), not line 1" },
     { wait = [[_G.at("lua/proj/config.lua", 7)]], timeout = 15000 },
   },
