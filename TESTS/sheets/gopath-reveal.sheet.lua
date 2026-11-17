@@ -1,6 +1,6 @@
 -- Bindings checklist: gM and gT. gM runs the real reveal of lib.nvim against stand-ins for the programs it starts
 -- (`fakes`: PowerShell on Windows, a file manager on Linux, `open` on macOS), so the call itself is checked; that the
--- file manager and filetree.nvim really show the file is the `manual` part.
+-- file manager really shows the file is the `manual` part. gT with the real filetree.nvim: gopath-filetree.sheet.lua.
 return {
   id = "gopath.reveal",
   feature = "gopath.reveal",
@@ -11,8 +11,7 @@ return {
   -- fallback there). On Windows explorer.exe is only the fallback when PowerShell fails, and a stand-in answers 0.
   fakes = { "powershell", "pwsh", "nautilus", "open", "powershell.exe", "pwsh.exe", "explorer.exe" },
   manual = {
-    "gM on a file opens the system file manager with that file selected",
-    "gT on a file reveals it in the real filetree.nvim",
+    "gM on a file opens the system file manager with that file selected; on a folder it shows the folder",
   },
   steps = {
     {

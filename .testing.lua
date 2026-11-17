@@ -22,8 +22,9 @@ return {
     ["*"] = "script",
   },
   deps = { "lib.nvim" },
-  -- The worktree of `ci commit` has no sibling checkouts: the child editors of the sheets find them this way.
-  env_allow = { "LIB_NVIM_DIR", "TESTING_NVIM_DIR" },
+  -- The worktree of `ci commit` has no sibling checkouts: the child editors of the sheets find them this way
+  -- (FILETREE_NVIM_DIR / UI_NVIM_DIR: gopath-filetree.sheet.lua, a skip without them).
+  env_allow = { "LIB_NVIM_DIR", "TESTING_NVIM_DIR", "FILETREE_NVIM_DIR", "UI_NVIM_DIR" },
   -- All test sheets run in one spec file, one child editor each: the defaults of 10 s per case and 60 s per file
   -- are reached under load (fileops, 2026-11-07).
   timeouts = { case_ms = 30000, file_ms = 300000 },
