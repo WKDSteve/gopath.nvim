@@ -580,6 +580,31 @@ check(
   end
 )
 
+check("value_origin: a save of the same size within the same second is seen", function()
+  -- The document cache is keyed on mtime and size; whole seconds alone would hand back the old tree.
+  local a = { "local M = {}", "function M.get() end", "function M.put() end", "return M" }
+  local b = { "local M = {}", "function M.put() end", "function M.get() end", "return M" }
+  local path = write_fixture("c7_same_size.lua", a)
+  local t = os.time()
+  vim.uv.fs_utime(path, t + 0.1, t + 0.1)
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, { 'local c = require("c7_same_size")', "c.get()" })
+  vim.api.nvim_set_current_buf(buf)
+  vim.bo[buf].filetype = "lua"
+  local value_origin = require("gopath.resolvers.lua.value_origin")
+  vim.api.nvim_win_set_cursor(0, { 2, 3 })
+  local r = value_origin.resolve()
+  assert_eq(r and r.range and r.range.line, 2, "c.get(): line 2 before the save")
+  local size = vim.uv.fs_stat(path).size
+  write_fixture("c7_same_size.lua", b)
+  vim.uv.fs_utime(path, t + 0.6, t + 0.6)
+  local st = vim.uv.fs_stat(path)
+  assert_eq(st.size, size, "the same size")
+  assert_eq(st.mtime.sec, t, "the same second")
+  r = value_origin.resolve()
+  assert_eq(r and r.range and r.range.line, 3, "c.get(): line 3 after the save")
+end)
+
 -- ========= Group D: legacy (line-pattern) fallback path =========
 -- Forces the treesitter tiers to report "unavailable" (as if no "lua" parser
 -- were installed) and re-runs a couple of Group A/B fixtures, to confirm the

@@ -55,7 +55,9 @@ end
 ---@return string[] primary
 ---@return string[] secondary
 local function get_doc(abs)
-  local stamp = vim.fn.getftime(abs) .. ":" .. vim.fn.getfsize(abs)
+  -- Nanoseconds too: a save within the same second (same size) must not hand back the old tree.
+  local st = vim.uv.fs_stat(abs)
+  local stamp = st and (st.mtime.sec .. "." .. st.mtime.nsec .. ":" .. st.size) or "?"
   if doc_cache and doc_cache.abs == abs and doc_cache.stamp == stamp then
     return doc_cache.doc, doc_cache.primary, doc_cache.secondary
   end
