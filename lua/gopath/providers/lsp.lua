@@ -2,6 +2,7 @@
 ---@brief LSP provider with proper range normalization.
 
 local LOC = require("gopath.util.location")
+local CROSS = require("gopath.util.cross")
 
 local M = {}
 
@@ -77,7 +78,9 @@ function M.definition_at_cursor(timeout_ms)
         -- whole response down with it. Same reasoning one level deeper for
         -- `rng.start` (LUA-16).
         if present(uri, "string") and present(rng, "table") and has_start_position(rng) then
-          local p = vim.uri_to_fname(uri)
+          -- GopathResult.path is forward-slash canonical across the pipeline; uri_to_fname
+          -- spells a Windows path with backslashes (and the drive as the server sent it).
+          local p = CROSS.to_forward(vim.uri_to_fname(uri))
 
           -- LSP ranges are 0-indexed, convert to 1-indexed
           local normalized = LOC.normalize_range({
