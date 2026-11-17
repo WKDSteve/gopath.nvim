@@ -11,7 +11,9 @@ gopath's primary use case.
   `identifier_locator` pass, which runs before the chain resolver
 - `local x = require("mod"); x.func()`, cursor on `x` → opens `mod.lua`
 - Table chain (`config.get()`) → opens the definition of `get` inside the
-  `config` module
+  `config` module, with or without a language server: without one the
+  Treesitter pass finds `function M.get()` or `M.get = ...` (a key the
+  module's table constructor holds is its value and opens at that line)
 - LSP-first by default (`order = { "lsp", "treesitter", "builtin" }`): a
   chain like `config.setup()` first tries `symbol_locator.via_lsp`, which
   jumps straight to the exact definition line/column; the Treesitter chain

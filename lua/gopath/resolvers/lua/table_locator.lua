@@ -321,7 +321,7 @@ end
 ---@param segs string[]  { ROOT, cfg, highlight, ... }
 ---@param seek_key string|nil
 ---@param abs_path string
----@return { path:string, key_line:integer|nil, key_col:integer|nil, tbl_start:integer|nil, tbl_end:integer|nil }|nil
+---@return { path:string, key_line:integer|nil, key_col:integer|nil, tbl_start:integer|nil, tbl_end:integer|nil, key_missing:true|nil }|nil
 local function legacy_locate(lines, segs, seek_key, abs_path)
   -- final found region
   local found = false
@@ -444,8 +444,15 @@ local function legacy_locate(lines, segs, seek_key, abs_path)
     end
   end
 
-  -- 8) No key given or key not found: land at table start.
-  return { path = abs_path, key_line = fs, key_col = 1, tbl_start = fs, tbl_end = fe }
+  -- 8) No key given or key not found: land at table start (`key_missing` tells the two apart).
+  return {
+    path = abs_path,
+    key_line = fs,
+    key_col = 1,
+    tbl_start = fs,
+    tbl_end = fe,
+    key_missing = seek_key and true or nil,
+  }
 end
 
 -- ========= treesitter (primary) helpers =========
@@ -611,7 +618,15 @@ local function ts_table_hit(abs_path, tbl_node, seek_key, src)
       return { path = abs_path, key_line = kl, key_col = kc, tbl_start = fs, tbl_end = fe }
     end
   end
-  return { path = abs_path, key_line = fs, key_col = 1, tbl_start = fs, tbl_end = fe }
+  -- No key given or key not found: land at table start (`key_missing` tells the two apart).
+  return {
+    path = abs_path,
+    key_line = fs,
+    key_col = 1,
+    tbl_start = fs,
+    tbl_end = fe,
+    key_missing = seek_key and true or nil,
+  }
 end
 
 ---Treesitter-based strategy, mirroring `legacy_locate`'s tiers 1-6 with real
@@ -623,7 +638,7 @@ end
 ---@param segs string[]
 ---@param seek_key string|nil
 ---@param abs_path string
----@return { path:string, key_line:integer|nil, key_col:integer|nil, tbl_start:integer|nil, tbl_end:integer|nil }|nil
+---@return { path:string, key_line:integer|nil, key_col:integer|nil, tbl_start:integer|nil, tbl_end:integer|nil, key_missing:true|nil }|nil
 local function ts_locate(lines, segs, seek_key, abs_path)
   local root, src = AST.parse(lines)
   if not root or not src then return nil end
@@ -696,7 +711,9 @@ end
 ---@param abs_path string  Absolute file path to search in
 ---@param base_chain string "M.cfg.highlight" (root.var1.var2)
 ---@param seek_key string|nil  e.g. "enable_insert_submode_colors"
----@return { path:string, key_line:integer|nil, key_col:integer|nil, tbl_start:integer|nil, tbl_end:integer|nil }|nil
+---@return { path:string, key_line:integer|nil, key_col:integer|nil, tbl_start:integer|nil, tbl_end:integer|nil, key_missing:true|nil }|nil
+---  `key_missing` is true when `seek_key` was given but the table does not hold it; `key_line` is then the
+---  table's first line.
 function M.locate(abs_path, base_chain, seek_key)
   if type(abs_path) ~= "string" or abs_path == "" then return nil end
   local lines = vim.fn.readfile(abs_path)

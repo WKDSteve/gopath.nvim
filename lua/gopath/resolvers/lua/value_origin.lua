@@ -150,21 +150,37 @@ end
 ---@param abs string  Absolute file path to search in
 ---@param extra_chain string  Dotted chain below the root, e.g. "cfg.highlight"
 ---@param last_key string|nil  Final chain segment to locate as a key, if any
----@return table|nil  Result of `table_locator.locate`, or nil
+---@return table|nil  Result of `table_locator.locate` (one that holds `last_key` first), or nil
 local function try_locate_with_roots(abs, extra_chain, last_key)
   local tl = require("gopath.resolvers.lua.table_locator")
   if type(abs) ~= "string" or abs == "" then return nil end
 
   local roots = get_roots_cached(abs)
   local suffix = (extra_chain and extra_chain ~= "") and ("." .. extra_chain) or ""
+  -- A root whose table holds the key wins over an earlier one that only has the table.
+  local keyless
   for _, root in ipairs(roots) do
     local base_chain = root .. suffix
     local hit = tl.locate(abs, base_chain, last_key)
-    if hit then return hit end
+    if hit and not hit.key_missing then return hit end
+    keyless = keyless or hit
   end
 
-  -- Optional last resort: the locator already handles "any root" itself, so
-  -- this is usually unnecessary.
+  return keyless
+end
+
+---The definition of `key` in module `module` (`function M.key()`, `M.key = ...`), through the
+---symbol locator with the base already resolved here (aliases included, which the
+---binding map the locator usually gets does not know).
+---@internal
+---@param base string
+---@param module string
+---@param key string
+---@return GopathResult|nil  nil when the module defines no such symbol
+local function symbol_definition(base, module, key)
+  local SL = require("gopath.resolvers.lua.symbol_locator")
+  local r = SL.via_treesitter({ base = base, chain = { key } }, { [base] = module })
+  if r and r.kind == "field" then return r end
   return nil
 end
 
@@ -195,7 +211,17 @@ function M.resolve()
     if not abs then return nil end
     abs = canonical(abs)
 
-    local hit = try_locate_with_roots(abs, base_res.extra_chain or "", last_key)
+    local extra = base_res.extra_chain or ""
+    local hit = try_locate_with_roots(abs, extra, last_key)
+    -- A key of the module's root table that its constructor does not hold (`config.get` for
+    -- a `function M.get()`) is a definition, not a value: without this, the answer would be
+    -- the table's first line (or the bare module) and the pipeline would stop before the
+    -- symbol locator. A missing key one level deeper (`cfg.highlight.nope`) still lands on
+    -- its table, the best answer there.
+    if last_key and extra == "" and (not hit or hit.key_missing) then
+      local def = symbol_definition(chain.base, base_res.module, last_key)
+      if def then return def end
+    end
     if hit then
       return {
         language = "lua",

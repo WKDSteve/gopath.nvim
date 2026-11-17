@@ -218,6 +218,11 @@ check("table_locator: missing key falls back to the table start", function()
   assert_truthy(hit, "expected a hit (table-start fallback)")
   assert_eq(hit.tbl_start, 2, "tbl_start")
   assert_eq(hit.key_line, 2, "key_line falls back to tbl_start")
+  assert_eq(hit.key_missing, true, "key_missing tells the fallback from a key on that line")
+
+  local found = table_locator.locate(path, "M.cfg", "highlight")
+  assert_truthy(found, "expected a hit for a key the table holds")
+  assert_nil(found.key_missing, "key_missing is only set for a key that is not there")
 end)
 
 check("table_locator: unmatched chain returns nil", function()
@@ -393,6 +398,58 @@ check(
     assert_eq(r.range.line, 3, "range.line")
   end
 )
+
+check("value_origin: a function of the module's root table resolves to its definition", function()
+  -- gF on `config.get()` without a language server: `get` is no key of the table constructor
+  -- (`local M = {}`), so the value pass must hand over to the definition, not report line 1.
+  write_fixture("c3_target.lua", {
+    "local M = {}",
+    "M.defaults = { enable_x = true }",
+    "",
+    "function M.get()",
+    "  return M.defaults",
+    "end",
+    "",
+    "M.set = function() end",
+    "",
+    "return M",
+  })
+  local value_origin = require("gopath.resolvers.lua.value_origin")
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
+    'local config = require("c3_target")',
+    "config.get()",
+    "config.set()",
+    "local alias = config",
+    "alias.get()",
+    "config.defaults.enable_x",
+    "config.nope()",
+  })
+  vim.api.nvim_set_current_buf(buf)
+  vim.bo[buf].filetype = "lua"
+
+  ---@param row integer
+  ---@param word string
+  ---@return table|nil
+  local function at(row, word)
+    local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1]
+    vim.api.nvim_win_set_cursor(0, { row, assert(line:find(word, 1, true)) - 1 })
+    return value_origin.resolve()
+  end
+
+  local r = at(2, "get")
+  assert_truthy(r, "config.get(): a result")
+  assert_eq(r.range.line, 4, "config.get(): the line of function M.get()")
+  r = at(3, "set")
+  assert_eq(r and r.range.line, 8, "config.set(): the line of M.set = function")
+  r = at(5, "get")
+  assert_eq(r and r.range.line, 4, "alias.get(): through the alias too")
+  r = at(6, "enable_x")
+  assert_eq(r and r.range.line, 2, "a value one level deeper keeps its initializer line")
+  r = at(7, "nope")
+  assert_truthy(r, "config.nope(): still the module")
+  assert_eq(r.range and r.range.line or 1, 1, "config.nope(): no definition, the table start")
+end)
 
 -- ========= Group D: legacy (line-pattern) fallback path =========
 -- Forces the treesitter tiers to report "unavailable" (as if no "lua" parser

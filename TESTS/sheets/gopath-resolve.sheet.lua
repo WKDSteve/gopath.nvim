@@ -6,9 +6,6 @@ return {
   feature = "gopath.resolve",
   title = "gopath.nvim: gF resolves identifiers, chains, values, comments, help tags, near names and bare hosts",
   task = "gopath.nvim/restliche-kaestchen-der-gopath-checkliste-als-testblaetter",
-  manual = {
-    "gF on `config.get()` with lua_ls running opens the definition of `get`, not just the file (without a language server it opens the file)",
-  },
   steps = {
     {
       lua = [[dofile(vim.fn.getcwd() .. "/TESTS/sheets/_helpers.lua")
@@ -72,9 +69,9 @@ return {
     { lua = [[_G.in_main(3, "get")]] },
     {
       keys = "gF",
-      note = "a table-chain call: the module's file (the exact definition needs a language server)",
+      note = "a table-chain call without a language server: the line of function M.get() (gopath-lsp.sheet.lua: with lua_ls)",
     },
-    { wait = [[_G.at("lua/proj/config.lua")]], timeout = 8000 },
+    { wait = [[_G.at("lua/proj/config.lua", 7)]], timeout = 8000 },
 
     { lua = [[_G.in_main(5, "enable_x")]] },
     { keys = "gF", note = "a config value: traced back to the line that sets it" },
