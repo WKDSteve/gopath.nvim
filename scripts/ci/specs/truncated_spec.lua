@@ -411,6 +411,11 @@ return function(H)
         "a folder of the same name elsewhere is (a path, not a name)"
       )
       H.no_match(joined, "/x%.lua", "an excluded root is not scanned at all")
+
+      -- a path is a path: a wildcard is not expanded into whichever folder happens to match
+      local literal =
+        table.concat(build_over({ root }, { excluded_paths = { root .. "/sub*" } }), "\n")
+      H.match(literal:gsub("\\", "/"), "/sub/Downloads/inner%.lua", "`sub*` does not exclude `sub`")
       local roots = table.concat(cache._get_config().scan_roots, "\n")
       H.no_match(roots, "exist", "an extra root that does not exist is left out")
 

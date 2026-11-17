@@ -273,11 +273,12 @@ function M.setup(opts)
   end
 
   -- === Folders asked for by name (truncated.extra_roots / truncated.excluded_paths) ===
-  -- Per call, not sticky: gopath.setup always passes both. `~` and `$VAR` are expanded.
+  -- Per call, not sticky: gopath.setup always passes both. `~` and `$VAR` are expanded, wildcards are not
+  -- (`vim.fn.expand` globbed: `~/Down*` silently became whichever folder matched).
   local excluded, excluded_set = {}, {}
   for _, p in ipairs(type(opts.excluded_paths) == "table" and opts.excluded_paths or {}) do
     if type(p) == "string" and p ~= "" then
-      local full = vim.fn.expand(p)
+      local full = vim.fs.normalize(p)
       excluded[#excluded + 1] = full
       excluded_set[norm_dir(full)] = true
     end
@@ -285,7 +286,7 @@ function M.setup(opts)
   config.excluded_paths, config.excluded_set = excluded, excluded_set
   for _, p in ipairs(type(opts.extra_roots) == "table" and opts.extra_roots or {}) do
     if type(p) == "string" and p ~= "" then
-      local full = vim.fn.expand(p)
+      local full = vim.fs.normalize(p)
       if vim.fn.isdirectory(full) == 1 then table.insert(config.scan_roots, full) end
     end
   end
