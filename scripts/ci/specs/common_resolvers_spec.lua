@@ -368,6 +368,37 @@ return function(H)
     end)
   end)
 
+  H.check(
+    "resolve_line: a line of text, not the cursor's; dir stands in for the buffer's folder",
+    function()
+      H.with_modules(EMPTY_CACHE, function()
+        local gopath = require("gopath")
+        local dir = H.tmpdir()
+        local file = H.write(dir .. "/src/frame.lua", { "" })
+        -- the cursor rests on a line that names nothing: only the text counts
+        H.line_at("this line has no file path at all", "this", { filetype = "lua" })
+        local r = gopath.resolve_line("at " .. file .. ":12:3 in function 'x'")
+        H.truthy(r, "expected a result")
+        H.eq(r.path, vim.fs.normalize(file))
+        H.same(r.range, { line = 12, col = 3 })
+        H.eq(r.language, "text", "the text has no filetype of its own")
+
+        -- relative to `dir` (cwd is elsewhere)
+        r = gopath.resolve_line("src/frame.lua:7", { dir = dir })
+        H.truthy(r, "expected a result against dir")
+        H.eq(r.source, "linepath-bufdir")
+        H.same(r.range, { line = 7, col = 1 })
+        H.is_nil(gopath.resolve_line("src/frame.lua:7"), "without dir it is not found")
+
+        H.is_nil(gopath.resolve_line(""), "an empty text")
+        ---@diagnostic disable-next-line: param-type-mismatch
+        H.is_nil(gopath.resolve_line(nil), "no text")
+        -- the cursor-based call still reads the cursor line
+        H.is_nil(linepath.resolve(), "the cursor line names nothing")
+      end)
+    end
+  )
+
   -- ── filetoken ──────────────────────────────────────────────────────────────
 
   local filetoken = require("gopath.resolvers.common.filetoken")

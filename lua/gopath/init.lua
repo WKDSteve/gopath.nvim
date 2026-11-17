@@ -116,6 +116,22 @@ function M.resolve_text(text)
   return require("gopath.resolve_selection").resolve_text(text)
 end
 
+---Resolve a LINE of text -- not the cursor's -- the way the linepath stage reads
+---the cursor line: a stack-trace `path:line[:col]`, a path with a known
+---extension, an absolute path. Each candidate is tried as written, against the
+---cwd, against `opts.dir` (the folder a relative path in that text belongs to),
+---then in the tail-search cache (never blocks, never walks the disk). Honours
+---`linepath.enable`. For a caller that holds the text of a line without a buffer
+---showing it: casedesk.nvim's log reading copy turns a stack frame into
+---`path:line` and asks here. nil when nothing on the line names a file.
+---@param text string
+---@param opts { dir?: string }|nil
+---@return GopathResult|nil
+function M.resolve_line(text, opts)
+  if type(text) ~= "string" or text == "" then return nil end
+  return require("gopath.resolvers.common.linepath").resolve(text, opts)
+end
+
 ---Shorten one absolute path to its `$VAR` form (`$NVIM_CONFIG_DIR/...` for the
 ---configured well-known directories, `$REPOS_DIR/...` for the repos root): the
 ---same logic as `:Gopath to-nvim-dir` / `:Gopath to-repos-dir`, for a caller

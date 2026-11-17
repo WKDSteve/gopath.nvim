@@ -20,13 +20,20 @@ local TS = require("gopath.resolvers.common.tailsearch")
 
 local uv = vim.uv or vim.loop
 
+---The cursor line, or `text` when given (`require("gopath").resolve_line`):
+---a caller that holds a line -- a stack frame of a log view -- asks without a
+---buffer showing it. `opts.dir` then stands in for the buffer's folder.
+---@param text string|nil
+---@param opts { dir?: string }|nil
 ---@return GopathResult|nil
-function M.resolve()
+function M.resolve(text, opts)
   local cfg = require("gopath.config").get()
   if not (cfg.linepath and cfg.linepath.enable) then return nil end
 
-  local line = vim.api.nvim_get_current_line()
+  local line = text
+  if type(line) ~= "string" then line = vim.api.nvim_get_current_line() end
   if not line or line == "" then return nil end
+  local language = type(text) == "string" and "text" or (vim.bo.filetype or "text")
 
   -- Collect candidates from all three heuristics
   local raw = {}
@@ -56,7 +63,7 @@ function M.resolve()
   ---@return GopathResult
   local function make_result(path, lineno, col, source, confidence)
     return {
-      language = vim.bo.filetype or "text",
+      language = language,
       kind = "file",
       path = path,
       range = (lineno and lineno > 0) and { line = lineno, col = col or 1 } or nil,
@@ -105,7 +112,7 @@ function M.resolve()
     --     its own bufdir fallback, never sees it in that case).
     --     Deliberately ordered AFTER cwd so existing resolutions never change;
     --     this only adds hits that previously failed.
-    local bufdir = vim.fn.expand("%:p:h")
+    local bufdir = type(text) == "string" and (opts and opts.dir or "") or vim.fn.expand("%:p:h")
     if bufdir ~= "" then
       local brel = vim.fs.normalize(bufdir .. "/" .. path)
       st = uv.fs_stat(brel)

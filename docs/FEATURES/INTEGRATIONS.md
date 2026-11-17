@@ -113,6 +113,19 @@ host. The module also answers `enabled()`, which is what `ui.menu` asks first.
   `config.menu.mappings.CONTRIBUTORS` in a `lib.nvim.contextmenu`-based
   setup — see that host's own docs for the exact shape.
 
+## casedesk.nvim — a stack frame of a log, to its source
+
+casedesk.nvim's log reading copy (`:Case log view`) shows .NET, Java and Lua
+stack traces as a tree. On a frame row it turns the frame into `path:line`
+(`in C:\src\Foo.cs:line 42` → `C:\src\Foo.cs:42`, `(Foo.java:42)` with its
+package → `com/example/Foo.java:42`) and asks
+`require("gopath").resolve_line(text, { dir = <case folder> })`: the linepath
+stage on that text instead of the cursor line, the tail search from the cache
+only. Through `pcall`, so gopath stays soft; without an answer it opens the
+original log at the frame's line.
+
+- **Consumer module:** casedesk.nvim `lua/casedesk/logview/integrations/source.lua`
+
 ## What this means for changes here
 
 `resolve_at_cursor` is a public entry point with consumers outside this
