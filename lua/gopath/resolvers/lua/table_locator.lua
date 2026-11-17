@@ -634,16 +634,17 @@ end
 ---to `legacy_locate`) when no "lua" parser is available or none of its tiers
 ---match.
 ---@internal
----@param lines string[]
+---@param doc GopathLuaDoc
 ---@param segs string[]
 ---@param seek_key string|nil
----@param abs_path string
 ---@return { path:string, key_line:integer|nil, key_col:integer|nil, tbl_start:integer|nil, tbl_end:integer|nil, key_missing:true|nil }|nil
-local function ts_locate(lines, segs, seek_key, abs_path)
-  local root, src = AST.parse(lines)
+local function ts_locate(doc, segs, seek_key)
+  local root, src, abs_path = doc.root, doc.src, doc.path
   if not root or not src then return nil end
 
-  local assigns = ts_collect_table_assignments(root, src)
+  -- One collection per document: a caller trying many roots against one file asks again and again.
+  doc.assigns = doc.assigns or ts_collect_table_assignments(root, src)
+  local assigns = doc.assigns
   local tbl = nil
 
   -- 1) direct: ROOT.cfg.highlight = { ... }
@@ -715,15 +716,40 @@ end
 ---  `key_missing` is true when `seek_key` was given but the table does not hold it; `key_line` is then the
 ---  table's first line.
 function M.locate(abs_path, base_chain, seek_key)
-  if type(abs_path) ~= "string" or abs_path == "" then return nil end
-  local lines = vim.fn.readfile(abs_path)
-  if type(lines) ~= "table" or #lines == 0 then return nil end
+  local doc = M.read_doc(abs_path)
+  if not doc then return nil end
+  return M.locate_doc(doc, base_chain, seek_key)
+end
 
+---A Lua file read and parsed once, for callers that look up several chains in it.
+---@class GopathLuaDoc
+---@field path string
+---@field lines string[]
+---@field root TSNode|nil  nil when no "lua" parser is available
+---@field src string|nil  the text `root` was parsed from
+---@field assigns table[]|nil  table assignments, collected on first use
+
+---Read and parse `abs_path` (nil when it is unreadable or empty).
+---@param abs_path string
+---@return GopathLuaDoc|nil
+function M.read_doc(abs_path)
+  if type(abs_path) ~= "string" or abs_path == "" then return nil end
+  local ok, lines = pcall(vim.fn.readfile, abs_path)
+  if not ok or type(lines) ~= "table" or #lines == 0 then return nil end
+  local root, src = AST.parse(lines)
+  return { path = abs_path, lines = lines, root = root, src = src }
+end
+
+---`M.locate` on a document from `M.read_doc`.
+---@param doc GopathLuaDoc
+---@param base_chain string
+---@param seek_key string|nil
+---@return { path:string, key_line:integer|nil, key_col:integer|nil, tbl_start:integer|nil, tbl_end:integer|nil, key_missing:true|nil }|nil
+function M.locate_doc(doc, base_chain, seek_key)
   local segs = split_chain(base_chain) -- { ROOT, cfg, highlight, ... }
   if #segs == 0 then return nil end
 
-  return ts_locate(lines, segs, seek_key, abs_path)
-    or legacy_locate(lines, segs, seek_key, abs_path)
+  return ts_locate(doc, segs, seek_key) or legacy_locate(doc.lines, segs, seek_key, doc.path)
 end
 
 return M

@@ -451,6 +451,135 @@ check("value_origin: a function of the module's root table resolves to its defin
   assert_eq(r.range and r.range.line or 1, 1, "config.nope(): no definition, the table start")
 end)
 
+check(
+  "value_origin: private tables and look-alike definitions do not win over the module's own",
+  function()
+    -- A top-level `local state = { enabled = ... }` holds the key, the module defines it as a
+    -- function: the module's definition wins. `local function setup()` and `M.sub.get` come first
+    -- in the file but are not `M.setup` / `M.get`. `cache` inside a function is no root at all.
+    local path = write_fixture("c4_target.lua", {
+      "local M = {}", -- 1
+      "local state = { enabled = false }", -- 2
+      "local function setup() end", -- 3
+      "M.sub = {}", -- 4
+      "function M.sub.get() end", -- 5
+      "function M.enabled()", -- 6
+      "  return state.enabled", -- 7
+      "end", -- 8
+      "function M.setup()", -- 9
+      "  return M.enabled()", -- 10
+      "end", -- 11
+      "function M.get() end", -- 12
+      "local function helper()", -- 13
+      "  local cache = { get = 1, only_cache = 2 }", -- 14
+      "  return cache", -- 15
+      "end", -- 16
+      "return M", -- 17
+    })
+    -- A module whose table is no root of its own: the private one is the last resort.
+    write_fixture("c5_target.lua", {
+      "local defaults = {",
+      "  a = 1,",
+      "}",
+      "return setmetatable({}, { __index = defaults })",
+    })
+    local value_origin = require("gopath.resolvers.lua.value_origin")
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
+      'local c = require("c4_target")',
+      "c.enabled()",
+      "c.setup()",
+      "c.get()",
+      'local d = require("c5_target")',
+      "d.a",
+    })
+    vim.api.nvim_set_current_buf(buf)
+    vim.bo[buf].filetype = "lua"
+
+    ---@param row integer
+    ---@param word string
+    ---@return table|nil
+    local function at(row, word)
+      local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1]
+      vim.api.nvim_win_set_cursor(0, { row, assert(line:find(word, 1, true)) - 1 })
+      return value_origin.resolve()
+    end
+
+    local r = at(2, "enabled")
+    assert_eq(
+      r and r.range and r.range.line,
+      6,
+      "c.enabled(): function M.enabled(), not state's key"
+    )
+    r = at(3, "setup")
+    assert_eq(
+      r and r.range and r.range.line,
+      9,
+      "c.setup(): function M.setup(), not local function setup"
+    )
+    r = at(4, "get")
+    assert_eq(r and r.range and r.range.line, 12, "c.get(): function M.get(), not M.sub.get")
+    r = at(6, "a")
+    assert_eq(r and r.range and r.range.line, 2, "d.a: the private table as the last resort")
+
+    -- The same in the module's own file: M.enabled on line 10 is function M.enabled().
+    vim.cmd("edit! " .. vim.fn.fnameescape(path))
+    r = at(10, "enabled")
+    assert_eq(r and r.range and r.range.line, 6, "M.enabled() in its own file: the definition")
+    vim.cmd("bwipeout!")
+  end
+)
+
+check(
+  "value_origin: a file with many tables is parsed once per gF and cached while unchanged",
+  function()
+    -- Each root used to cost a read and a full parse (the review measured ~21 s for 300 tables).
+    local lines = { "local M = {}" }
+    for i = 1, 300 do
+      lines[#lines + 1] = ("local t%d = { k%d = %d }"):format(i, i, i)
+    end
+    lines[#lines + 1] = "function M.last() end"
+    lines[#lines + 1] = "return M"
+    write_fixture("c6_many.lua", lines)
+    local AST = require("gopath.resolvers.lua.ts_lua_ast")
+    local parse = AST.parse
+    local parses = 0
+    AST.parse = function(...)
+      parses = parses + 1
+      return parse(...)
+    end
+    local ok, err = pcall(function()
+      local buf = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(
+        buf,
+        0,
+        -1,
+        false,
+        { 'local c = require("c6_many")', "c.last()", "c.k150" }
+      )
+      vim.api.nvim_set_current_buf(buf)
+      vim.bo[buf].filetype = "lua"
+      local value_origin = require("gopath.resolvers.lua.value_origin")
+      vim.api.nvim_win_set_cursor(0, { 2, 3 })
+      local r = value_origin.resolve()
+      assert_eq(r and r.range and r.range.line, #lines - 1, "c.last(): the definition")
+      assert_eq(parses, 1, "one parse of c6_many.lua for the first gF")
+      vim.api.nvim_win_set_cursor(0, { 2, 3 })
+      value_origin.resolve()
+      vim.api.nvim_win_set_cursor(0, { 3, 3 })
+      r = value_origin.resolve()
+      assert_eq(
+        r and r.range and r.range.line,
+        1,
+        "c.k150: M lacks it, its table start, not private t150"
+      )
+      assert_eq(parses, 1, "no parse again while the file is unchanged")
+    end)
+    AST.parse = parse
+    if not ok then error(err, 0) end
+  end
+)
+
 -- ========= Group D: legacy (line-pattern) fallback path =========
 -- Forces the treesitter tiers to report "unavailable" (as if no "lua" parser
 -- were installed) and re-runs a couple of Group A/B fixtures, to confirm the

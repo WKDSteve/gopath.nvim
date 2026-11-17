@@ -6,51 +6,64 @@ local BIX = require("gopath.resolvers.lua.binding_index")
 local ALX = require("gopath.resolvers.lua.alias_index")
 local PATH = require("gopath.util.path")
 local CROSS = require("gopath.util.cross")
+local AST = require("gopath.resolvers.lua.ts_lua_ast")
 
 local M = {}
 
----@class _RootsCache
----@field mtime integer
----@field roots string[]
+-- The last Lua file looked into: its document (read and parsed once) and its roots. One entry, so a
+-- big file costs one parse per gF, not one per root tried, and nothing piles up. Keyed on the path,
+-- mtime and size: the file is read from disk (it need not be an open buffer), so there is no
+-- changedtick to key off.
+---@type { abs: string, stamp: string, doc: GopathLuaDoc, primary: string[], secondary: string[] }|nil
+local doc_cache = nil
 
--- abs file path -> _RootsCache. Invalidated on mtime change (these files are
--- read via vim.fn.readfile, not necessarily open buffers, so there is no
--- changedtick to key off — unlike binding_index.lua's per-buffer cache).
-local roots_cache = {}
-
----Infer candidate root identifiers ("M", locally-declared tables, the
----identifier returned at the end of the file) from the file's lines.
+---Candidate root identifiers of a file, from its top-level lines only (a `local x = {` inside a
+---function is private state, never what `require` hands out).
+---  primary:   the identifier of a top-level `return x`, then "M" -- the module's own table
+---  secondary: every other top-level `local x = {` / `local x = setmetatable(` -- a last resort
 ---@internal
 ---@param lines_ string[]
----@return string[]
+---@return string[] primary
+---@return string[] secondary
 local function infer_roots_from_lines(lines_)
-  local roots = { "M" }
+  local primary, secondary = {}, {}
   for i = 1, #lines_ do
     local s = lines_[i] or ""
-    local id = s:match("^%s*local%s+([%w_]+)%s*=%s*{")
-      or s:match("^%s*local%s+([%w_]+)%s*=%s*setmetatable%s*%(")
-    if id then roots[#roots + 1] = id end
-    local rid = s:match("^%s*return%s+([%w_]+)%s*$")
-    if rid then roots[#roots + 1] = rid end
+    local rid = s:match("^return%s+([%w_]+)%s*$")
+    if rid then primary[#primary + 1] = rid end
+    local id = s:match("^local%s+([%w_]+)%s*=%s*{")
+      or s:match("^local%s+([%w_]+)%s*=%s*setmetatable%s*%(")
+    if id then secondary[#secondary + 1] = id end
   end
-  return require("lib.lua.tables").dedup_list(roots)
+  primary[#primary + 1] = "M"
+  local TBL = require("lib.lua.tables")
+  primary = TBL.dedup_list(primary)
+  local is_primary = {}
+  for _, r in ipairs(primary) do
+    is_primary[r] = true
+  end
+  return primary,
+    vim.tbl_filter(function(r)
+      return not is_primary[r]
+    end, TBL.dedup_list(secondary))
 end
 
----Get the inferred roots for `abs`, from cache when the file's mtime is
----unchanged since the last inference, avoiding a re-read + re-scan of every
----line on repeated lookups against the same (unedited) file.
+---The document and roots of `abs`, from cache while the file is unchanged.
 ---@internal
 ---@param abs string
----@return string[]
-local function get_roots_cached(abs)
-  local mtime = vim.fn.getftime(abs)
-  local entry = roots_cache[abs]
-  if entry and entry.mtime == mtime then return entry.roots end
-
-  local lines = vim.fn.readfile(abs)
-  local roots = infer_roots_from_lines(lines)
-  roots_cache[abs] = { mtime = mtime, roots = roots }
-  return roots
+---@return GopathLuaDoc|nil doc
+---@return string[] primary
+---@return string[] secondary
+local function get_doc(abs)
+  local stamp = vim.fn.getftime(abs) .. ":" .. vim.fn.getfsize(abs)
+  if doc_cache and doc_cache.abs == abs and doc_cache.stamp == stamp then
+    return doc_cache.doc, doc_cache.primary, doc_cache.secondary
+  end
+  local doc = require("gopath.resolvers.lua.table_locator").read_doc(abs)
+  if not doc then return nil, {}, {} end
+  local primary, secondary = infer_roots_from_lines(doc.lines)
+  doc_cache = { abs = abs, stamp = stamp, doc = doc, primary = primary, secondary = secondary }
+  return doc, primary, secondary
 end
 
 ---Split a dotted string ("a.b.c") into its segments.
@@ -144,44 +157,111 @@ local function canonical(abs)
   return CROSS.to_forward(abs)
 end
 
----Try to locate `extra_chain`/`last_key` inside `abs`, trying every plausible
----root identifier inferred from the file (see `infer_roots_from_lines`).
+---Locate `suffix`/`last_key` under each of `roots` in turn.
 ---@internal
----@param abs string  Absolute file path to search in
----@param extra_chain string  Dotted chain below the root, e.g. "cfg.highlight"
----@param last_key string|nil  Final chain segment to locate as a key, if any
----@return table|nil  Result of `table_locator.locate` (one that holds `last_key` first), or nil
-local function try_locate_with_roots(abs, extra_chain, last_key)
-  local tl = require("gopath.resolvers.lua.table_locator")
-  if type(abs) ~= "string" or abs == "" then return nil end
-
-  local roots = get_roots_cached(abs)
-  local suffix = (extra_chain and extra_chain ~= "") and ("." .. extra_chain) or ""
-  -- A root whose table holds the key wins over an earlier one that only has the table.
+---@param doc GopathLuaDoc
+---@param roots string[]
+---@param suffix string  ".cfg.highlight" below the root, or ""
+---@param last_key string|nil
+---@return table|nil hit  the first table that holds `last_key` (or the first table, without a key)
+---@return table|nil keyless  else the first table found that lacks `last_key`
+local function locate_in(doc, roots, suffix, last_key)
+  local TL = require("gopath.resolvers.lua.table_locator")
   local keyless
   for _, root in ipairs(roots) do
-    local base_chain = root .. suffix
-    local hit = tl.locate(abs, base_chain, last_key)
-    if hit and not hit.key_missing then return hit end
+    local hit = TL.locate_doc(doc, root .. suffix, last_key)
+    if hit and not hit.key_missing then return hit, nil end
     keyless = keyless or hit
   end
-
-  return keyless
+  return nil, keyless
 end
 
----The definition of `key` in module `module` (`function M.key()`, `M.key = ...`), through the
----symbol locator with the base already resolved here (aliases included, which the
----binding map the locator usually gets does not know).
+---Where one of `roots` defines `key` itself: `function R.key()`, `function R:key()` or
+---`R.key = ...`, with R one of `roots` and nothing between (no `local function key()`, no
+---`R.sub.key`). The first one in the file.
 ---@internal
----@param base string
----@param module string
+---@param doc GopathLuaDoc
+---@param roots string[]
 ---@param key string
----@return GopathResult|nil  nil when the module defines no such symbol
-local function symbol_definition(base, module, key)
-  local SL = require("gopath.resolvers.lua.symbol_locator")
-  local r = SL.via_treesitter({ base = base, chain = { key } }, { [base] = module })
-  if r and r.kind == "field" then return r end
-  return nil
+---@return integer|nil line
+---@return integer|nil col
+local function definition_of(doc, roots, key)
+  if not doc.root or not doc.src then return nil, nil end
+  local want = {}
+  for _, r in ipairs(roots) do
+    want[r] = true
+  end
+  local best_l, best_c
+  local function consider(node)
+    local c = AST.chain_of(node, doc.src)
+    if c and #c == 2 and want[c[1]] and c[2] == key then
+      local l, col = AST.node_start(node)
+      if not best_l or l < best_l or (l == best_l and col < best_c) then
+        best_l, best_c = l, col
+      end
+    end
+  end
+  local decl = AST.get_query("vo_fn_decl_name", "(function_declaration name: (_) @name)")
+  if decl then
+    for _, node in decl:iter_captures(doc.root, doc.src) do
+      consider(node)
+    end
+  end
+  local assign =
+    AST.get_query("vo_assign_lhs", "(assignment_statement (variable_list name: (_) @lhs))")
+  if assign then
+    for _, node in assign:iter_captures(doc.root, doc.src) do
+      consider(node)
+    end
+  end
+  return best_l, best_c
+end
+
+---Find what `extra_chain`/`last_key` points at in `abs`. In order: a table of the module's own
+---roots (`return x`, "M") that holds the key; for a key straight on that table, its definition
+---(`config.get` for a `function M.get()`, which no constructor holds); that table without the
+---key (its first line); and only then the file's other top-level tables, private state the
+---module does not hand out.
+---@internal
+---@param abs string
+---@param extra_chain string
+---@param last_key string|nil
+---@param chain string[]
+---@return GopathResult|nil
+local function locate_value(abs, extra_chain, last_key, chain)
+  local doc, primary, secondary = get_doc(abs)
+  if not doc then return nil end
+  local suffix = extra_chain ~= "" and ("." .. extra_chain) or ""
+
+  local hit, keyless = locate_in(doc, primary, suffix, last_key)
+  if not hit and last_key and extra_chain == "" then
+    local l, c = definition_of(doc, primary, last_key)
+    if l then
+      return {
+        language = "lua",
+        kind = "field",
+        path = abs,
+        range = { line = l, col = c or 1 },
+        chain = chain,
+        source = "treesitter",
+        confidence = 0.85,
+      }
+    end
+  end
+  if not hit and not keyless then
+    hit, keyless = locate_in(doc, secondary, suffix, last_key)
+  end
+  hit = hit or keyless
+  if not hit then return nil end
+  return {
+    language = "lua",
+    kind = last_key and "field" or "table",
+    path = hit.path,
+    range = { line = hit.key_line or hit.tbl_start or 1, col = hit.key_col or 1 },
+    chain = chain,
+    source = "treesitter",
+    confidence = last_key and 0.9 or 0.8,
+  }
 end
 
 ---@return GopathResult|nil
@@ -211,38 +291,16 @@ function M.resolve()
     if not abs then return nil end
     abs = canonical(abs)
 
-    local extra = base_res.extra_chain or ""
-    local hit = try_locate_with_roots(abs, extra, last_key)
-    -- A key of the module's root table that its constructor does not hold (`config.get` for
-    -- a `function M.get()`) is a definition, not a value: without this, the answer would be
-    -- the table's first line (or the bare module) and the pipeline would stop before the
-    -- symbol locator. A missing key one level deeper (`cfg.highlight.nope`) still lands on
-    -- its table, the best answer there.
-    if last_key and extra == "" and (not hit or hit.key_missing) then
-      local def = symbol_definition(chain.base, base_res.module, last_key)
-      if def then return def end
-    end
-    if hit then
-      return {
+    return locate_value(abs, base_res.extra_chain or "", last_key, chain.chain)
+      or {
         language = "lua",
-        kind = last_key and "field" or "table",
-        path = hit.path,
-        range = { line = hit.key_line or hit.tbl_start or 1, col = hit.key_col or 1 },
+        kind = "module",
+        path = abs,
+        range = nil,
         chain = chain.chain,
         source = "treesitter",
-        confidence = last_key and 0.9 or 0.8,
+        confidence = 0.5,
       }
-    end
-
-    return {
-      language = "lua",
-      kind = "module",
-      path = abs,
-      range = nil,
-      chain = chain.chain,
-      source = "treesitter",
-      confidence = 0.5,
-    }
   end
 
   if base_res.kind == "current" then
@@ -252,18 +310,7 @@ function M.resolve()
 
     -- Do NOT hard-code "M" here -- try the roots as well, or a module using a
     -- different local name for its table resolves to nothing.
-    local hit = try_locate_with_roots(abs, base_res.extra_chain or "", last_key)
-    if hit then
-      return {
-        language = "lua",
-        kind = last_key and "field" or "table",
-        path = hit.path,
-        range = { line = hit.key_line or hit.tbl_start or 1, col = hit.key_col or 1 },
-        chain = chain.chain,
-        source = "treesitter",
-        confidence = last_key and 0.9 or 0.8,
-      }
-    end
+    return locate_value(abs, base_res.extra_chain or "", last_key, chain.chain)
   end
 
   return nil
