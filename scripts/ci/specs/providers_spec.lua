@@ -81,7 +81,47 @@ return function(H)
     H.is_nil(token.extract_at_cursor(), "empty line")
     H.line_at("   ", " ", { filetype = "text" })
     H.is_nil(token.extract_at_cursor(), "whitespace only")
+    H.line_at("lua/x.lua:3   ", "  ", { filetype = "text" })
+    vim.api.nvim_win_set_cursor(0, { 1, 13 })
+    H.is_nil(token.extract_at_cursor(), "blank space after the last token")
   end)
+
+  H.check("extract_at_cursor: on blank space, the next token with its location suffix", function()
+    -- `<cfile>` reads the next file name after the cursor too, but drops ":77"; a cursor on
+    -- the indent of a traceback line opened the file without its line.
+    H.line_at("  lua/x.lua:77: msg", " ", { filetype = "text" })
+    H.eq(token.extract_at_cursor(), "lua/x.lua:77:", "from the indent")
+    H.line_at("see   src/a.lua:4", "  s", { filetype = "text" })
+    H.eq(token.extract_at_cursor(), "src/a.lua:4", "from a gap between two words")
+    H.line_at("lua/x.lua:3 next", " ", { filetype = "text" })
+    H.eq(token.extract_at_cursor(), "lua/x.lua:3", "right behind a token: still that token")
+  end)
+
+  H.check(
+    "resolve_at_cursor: a traceback line keeps its line with the cursor on the indent",
+    function()
+      H.config_sandbox(function(c)
+        c.setup({})
+        local dir = H.tmpdir()
+        local lines = {}
+        for i = 1, 80 do
+          lines[i] = "-- " .. i
+        end
+        local file = H.write(dir .. "/lua/x.lua", lines)
+        local cwd = vim.uv.cwd()
+        vim.cmd.cd(vim.fn.fnameescape(dir))
+        local ok, err = pcall(function()
+          H.line_at("  lua/x.lua:77: msg", " ", { filetype = "text" })
+          local r = require("gopath.resolve").resolve_at_cursor()
+          H.truthy(r, "expected a result")
+          H.eq(vim.uv.fs_realpath(r.path), vim.uv.fs_realpath(file), "the file")
+          H.eq(r.range and r.range.line, 77, "and its line")
+        end)
+        vim.cmd.cd(vim.fn.fnameescape(cwd))
+        if not ok then error(err, 0) end
+      end)
+    end
+  )
 
   H.check("expand_cfile and get_token: the smart extractor first, <cfile> after", function()
     H.line_at("see lua/gopath/init.lua now", "gopath", { filetype = "text" })

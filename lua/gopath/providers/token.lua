@@ -13,6 +13,16 @@ function M.extract_at_cursor()
   -- Path characters: alphanumeric, /, \, -, _, ., :, (, ), +, ~, @
   local path_chars = "[%w/\\%.%-%_:%(%)%+~@]"
 
+  -- On blank space with no token right before it, read the next token after the cursor, as
+  -- `<cfile>` does. Without this, the `<cfile>` fallback in get_token answers instead and
+  -- drops the location suffix: gP on the indent of "  lua/x.lua:77: msg" opened lua/x.lua
+  -- without line 77. A cursor right behind a token keeps reading that token.
+  if line:sub(col, col):match("%s") and not line:sub(col - 1, col - 1):match(path_chars) then
+    local next_col = line:find("%S", col)
+    if not next_col then return nil end
+    col = next_col
+  end
+
   -- Walk backwards to find start
   local start_col = col
   while start_col > 1 do
