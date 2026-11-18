@@ -33,12 +33,36 @@ end)()]]
 -- (2.4-3.4 s at 50-60 %, 20.9 s under full load, 2026-11-18), while a reference workload in the child did not (parsing
 -- gopath's files took 17-33 ms at any load). So the bound applies to the raw value scaled by min(1, STARTUP_REF_MS /
 -- startuptime): on a start no slower than STARTUP_REF_MS it is the raw value, on a loaded one it shrinks with the load.
--- The raw value and startuptime are kept as notes without a bound.
+-- A start slow for another reason (a slow plugin, a cold loader cache) must not loosen the bound, so the factor applies
+-- only while the machine is busy: the child samples the CPU time of all cores over half a second (BUSY_MS) right
+-- before, and below BUSY_SHARE the raw value is bounded as it is. Even then the factor stops at MIN_FACTOR (at most a
+-- tenfold loosening). On Linux and macOS startuptime is CPU time, so the adjustment does little there.
+-- The raw value, startuptime and the busy share are kept as notes without a bound.
 local STARTUP_REF_MS = 2000
+local MIN_FACTOR = 0.1
+local BUSY_SHARE = 0.25
 local GOPATH_MS = "require('lazy.core.config').plugins['gopath.nvim']._.loaded.time / 1e6"
 local STARTUP_MS = "require('lazy').stats().startuptime"
-local ADJUSTED_MS = ("(%s) * math.min(1, %d / math.max(1, %s))"):format(
+local BUSY_PCT = [[(function()
+  local function sample()
+    local busy, all = 0, 0
+    for _, c in ipairs(vim.uv.cpu_info() or {}) do
+      local t = c.times
+      busy = busy + t.user + t.nice + t.sys + t.irq
+      all = all + t.user + t.nice + t.sys + t.irq + t.idle
+    end
+    return busy, all
+  end
+  local b0, a0 = sample()
+  vim.uv.sleep(500)
+  local b1, a1 = sample()
+  _G.GOPATH_BUSY = a1 > a0 and (b1 - b0) / (a1 - a0) or 0
+  return _G.GOPATH_BUSY * 100
+end)()]]
+local ADJUSTED_MS = ("(%s) * ((_G.GOPATH_BUSY or 0) >= %s and math.max(%s, math.min(1, %d / math.max(1, %s))) or 1)"):format(
   GOPATH_MS,
+  BUSY_SHARE,
+  MIN_FACTOR,
   STARTUP_REF_MS,
   STARTUP_MS
 )
@@ -73,12 +97,18 @@ return {
       note = "how loaded the machine was for this start",
     },
     {
+      measure = BUSY_PCT,
+      name = "machine busy",
+      unit = "%",
+      note = "all cores, over half a second",
+    },
+    {
       measure = ADJUSTED_MS,
       name = "gopath (VeryLazy) load-adjusted",
       unit = "ms",
       -- measured 76 ms on 2026-11-11 (STEVESPC): a guard against a regression; a doubling stays red on a quiet machine
       max = 120,
-      note = "the load time scaled down by how much slower than "
+      note = "on a busy machine the load time scaled down by how much slower than "
         .. STARTUP_REF_MS
         .. " ms the whole start was",
     },
@@ -113,6 +143,12 @@ return {
       note = "no bound, see below",
     },
     { measure = STARTUP_MS, name = "lazy startuptime (second start)", unit = "ms" },
+    {
+      measure = BUSY_PCT,
+      name = "machine busy (second start)",
+      unit = "%",
+      note = "all cores, over half a second",
+    },
     {
       measure = ADJUSTED_MS,
       name = "gopath (VeryLazy) index on disk load-adjusted",
