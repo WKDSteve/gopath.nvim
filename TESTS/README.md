@@ -24,6 +24,12 @@ reveal against stand-ins for the programs it starts (`fakes`: PowerShell, nautil
 checked; that the file manager and the real filetree.nvim behind `gT` show the file stays with a person
 (`manual` of the sheet).
 
+A sheet's `task` names the task it came from, and it keeps naming it once that task is done: no
+standing "regression sheets" task is opened for them. `testing sheets report --tasks` then writes into
+no task (it lists a finished one as `missing`), and the conformance check K16 accepts a finished task. A
+sheet that turns red is caught by the suite and the CI, where it runs like every spec. A new sheet for
+an open live check names that check's task while it is open.
+
 ## Table of contents
 
 - [Running them](#running-them)
