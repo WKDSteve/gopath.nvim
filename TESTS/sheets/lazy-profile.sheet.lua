@@ -28,6 +28,20 @@ local newest_index = [[(function()
   end
   return best
 end)()]]
+-- Load: under parallel sessions (CPU 77-100 %) the same code read 99-531 ms against 28-49 ms on a quiet machine, so a
+-- fixed bound on the raw value was a false red. lazy's own startuptime of the same start grows with the load as well
+-- (2.4-3.4 s at 50-60 %, 20.9 s under full load, 2026-11-18), while a reference workload in the child did not (parsing
+-- gopath's files took 17-33 ms at any load). So the bound applies to the raw value scaled by min(1, STARTUP_REF_MS /
+-- startuptime): on a start no slower than STARTUP_REF_MS it is the raw value, on a loaded one it shrinks with the load.
+-- The raw value and startuptime are kept as notes without a bound.
+local STARTUP_REF_MS = 2000
+local GOPATH_MS = "require('lazy.core.config').plugins['gopath.nvim']._.loaded.time / 1e6"
+local STARTUP_MS = "require('lazy').stats().startuptime"
+local ADJUSTED_MS = ("(%s) * math.min(1, %d / math.max(1, %s))"):format(
+  GOPATH_MS,
+  STARTUP_REF_MS,
+  STARTUP_MS
+)
 return {
   id = "gopath.lazy-profile",
   title = "gopath under VeryLazy in :Lazy profile",
@@ -47,12 +61,26 @@ return {
       note = "VeryLazy has loaded gopath",
     },
     {
-      measure = "require('lazy.core.config').plugins['gopath.nvim']._.loaded.time / 1e6",
+      measure = GOPATH_MS,
       name = "gopath (VeryLazy)",
       unit = "ms",
-      -- measured 76 ms on 2026-11-11 (STEVESPC): a guard against a regression, with room for a loaded machine
+      note = "lazy keeps the load time in ns; one reading per start (runs would read the same value); no bound, see below",
+    },
+    {
+      measure = STARTUP_MS,
+      name = "lazy startuptime",
+      unit = "ms",
+      note = "how loaded the machine was for this start",
+    },
+    {
+      measure = ADJUSTED_MS,
+      name = "gopath (VeryLazy) load-adjusted",
+      unit = "ms",
+      -- measured 76 ms on 2026-11-11 (STEVESPC): a guard against a regression; a doubling stays red on a quiet machine
       max = 120,
-      note = "lazy keeps the load time in ns; one reading per start (runs would read the same value)",
+      note = "the load time scaled down by how much slower than "
+        .. STARTUP_REF_MS
+        .. " ms the whole start was",
     },
     {
       lua = "local best = " .. newest_index .. [[
@@ -79,8 +107,15 @@ return {
       note = "VeryLazy has loaded gopath again",
     },
     {
-      measure = "require('lazy.core.config').plugins['gopath.nvim']._.loaded.time / 1e6",
+      measure = GOPATH_MS,
       name = "gopath (VeryLazy) index on disk",
+      unit = "ms",
+      note = "no bound, see below",
+    },
+    { measure = STARTUP_MS, name = "lazy startuptime (second start)", unit = "ms" },
+    {
+      measure = ADJUSTED_MS,
+      name = "gopath (VeryLazy) index on disk load-adjusted",
       unit = "ms",
       max = 120,
       note = "setup() leaves the index on disk (e0a6412): about the value of the first start",
