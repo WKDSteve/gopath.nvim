@@ -390,6 +390,23 @@ return function(H)
         H.same(r.range, { line = 7, col = 1 })
         H.is_nil(gopath.resolve_line("src/frame.lua:7"), "without dir it is not found")
 
+        -- a path with a blank: a .NET frame's `C:\Users\John Smith\src\T.cs:42`
+        local spaced = H.write(dir .. "/sub dir/My Frame.cs", { "" })
+        r = gopath.resolve_line(spaced .. ":42")
+        H.truthy(r, "expected a result for a path with a blank")
+        H.eq(r.path, vim.fs.normalize(spaced))
+        H.same(r.range, { line = 42, col = 1 })
+        r = gopath.resolve_line((spaced:gsub("/", "\\")) .. ":5:2")
+        H.truthy(r, "expected a result for a backslashed path with a blank")
+        H.eq(r.path, vim.fs.normalize(spaced))
+        H.same(r.range, { line = 5, col = 2 })
+        r = gopath.resolve_line("sub dir/My Frame.cs:9", { dir = dir })
+        H.truthy(r, "expected a result against dir for a path with a blank")
+        H.eq(r.source, "linepath-bufdir")
+        -- free text is no path, blank or not
+        H.is_nil(linepath.whole_location("Retry at step:3"))
+        H.is_nil(linepath.whole_location("at x.lua:3 in function 'f'"))
+
         H.is_nil(gopath.resolve_line(""), "an empty text")
         ---@diagnostic disable-next-line: param-type-mismatch
         H.is_nil(gopath.resolve_line(nil), "no text")

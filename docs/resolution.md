@@ -288,7 +288,9 @@ for a filename, then creates it there) or, when filetree.nvim is set up,
   stage on a line of text instead of the cursor line (stack-trace
   `path:line[:col]`, a path with a known extension, an absolute path; `dir` is
   the folder a relative path is also tried against; the tail search uses the
-  cache only) -- casedesk.nvim's log reading copy uses it for stack frames.
+  cache only; a text that is nothing but `path:line[:col]` is also one path
+  when that path holds a blank, `C:/Users/John Smith/src/T.cs:42`) --
+  casedesk.nvim's log reading copy uses it for stack frames.
   `require("gopath").shorten_path(abs)` is the reverse for one absolute
   path: `$NVIM_CONFIG_DIR/...` / `$REPOS_DIR/...` (the same logic as `:Gopath
   to-nvim-dir` / `to-repos-dir`, driven by `shorten_known_dirs` / `shorten_dirs`),

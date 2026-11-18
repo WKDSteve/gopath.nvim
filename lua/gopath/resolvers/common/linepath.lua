@@ -20,6 +20,28 @@ local TS = require("gopath.resolvers.common.tailsearch")
 
 local uv = vim.uv or vim.loop
 
+---A text that is nothing but `path:line` or `path:line:col`, whose path holds a
+---blank and looks like a file (a folder separator or an extension), as one
+---candidate; nil for any other text (the heuristics read those).
+---@param text string
+---@return { raw: string, path: string, lineno: integer, col: integer|nil }|nil
+function M.whole_location(text)
+  local s = vim.trim(text)
+  if #s > 4096 or not s:find("%s") then return nil end
+  local path, lineno, col = s:match("^(.-):(%d+):(%d+)$")
+  if not path then
+    path, lineno = s:match("^(.-):(%d+)$")
+  end
+  if not path or path == "" then return nil end
+  if not (path:find("[/\\]") or path:find("%.%w+$")) then return nil end
+  return {
+    raw = s,
+    path = path,
+    lineno = tonumber(lineno) --[[@as integer]],
+    col = col and tonumber(col) or nil,
+  }
+end
+
 ---The cursor line, or `text` when given (`require("gopath").resolve_line`):
 ---a caller that holds a line -- a stack frame of a log view -- asks without a
 ---buffer showing it. `opts.dir` then stands in for the buffer's folder.
@@ -37,6 +59,11 @@ function M.resolve(text, opts)
 
   -- Collect candidates from all three heuristics
   local raw = {}
+  -- A caller's text that is nothing but `path:line[:col]` names one file, also
+  -- when its path holds a blank (`C:\Users\John Smith\src\T.cs:42`, which a .NET
+  -- frame of a log view becomes): the heuristics below split at blanks.
+  local whole = type(text) == "string" and M.whole_location(text) or nil
+  if whole then raw[#raw + 1] = whole end
   for _, c in ipairs(find.stack_patterns(line) or {}) do
     raw[#raw + 1] = c
   end
