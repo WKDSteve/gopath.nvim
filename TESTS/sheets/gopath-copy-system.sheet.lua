@@ -1,13 +1,14 @@
 -- gY where Neovim's clipboard register does not hold the text (no provider: a terminal over SSH, a bare install):
 -- lib.nvim's copy falls through to the system tool, which starts a process. The tools are recording stand-ins
--- (`fakes`): PowerShell's Set-Clipboard on Windows, pbcopy on macOS, wl-copy / xclip / xsel on Linux, so the real
+-- (`fakes`): PowerShell's Set-Clipboard on Windows, pbcopy on macOS, wl-copy / xclip / xsel on Linux, clip.exe under
+-- WSL, so the real
 -- clipboard of the machine is left alone. gopath-info.sheet.lua checks gY with a recorded clipboard; this one the
 -- way to the system tool. That the text really lands in the system clipboard is the `manual` part.
 return {
   id = "gopath.copy-system",
   feature = "gopath.info",
   title = "gopath.nvim: gY without a clipboard provider copies through the system tool",
-  fakes = { "powershell", "pwsh", "pbcopy", "wl-copy", "xclip", "xsel" },
+  fakes = { "powershell", "pwsh", "pbcopy", "wl-copy", "xclip", "xsel", "clip.exe" },
   steps = {
     {
       lua = [[dofile(vim.fn.getcwd() .. "/TESTS/sheets/_helpers.lua")
@@ -45,7 +46,7 @@ return {
       local fakes = require("testing.fake_programs")
       _G.tools = function()
         local all = {}
-        for _, name in ipairs({ "powershell", "pwsh", "pbcopy", "wl-copy", "xclip", "xsel" }) do
+        for _, name in ipairs({ "powershell", "pwsh", "pbcopy", "wl-copy", "xclip", "xsel", "clip.exe" }) do
           vim.list_extend(all, fakes.read(vim.env.TESTING_FAKES, name))
         end
         return all

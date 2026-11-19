@@ -1,5 +1,6 @@
 -- gF on a PDF, an image and a URL hands them to the system's default application through lib.nvim's opener, never
--- into a buffer. The openers are recording stand-ins (`fakes`): xdg-open on Linux, open on macOS. On Windows lib.nvim
+-- into a buffer. The openers are recording stand-ins (`fakes`): xdg-open on Linux, open on macOS, explorer.exe and
+-- rundll32.exe under WSL (Windows interop, where a stand-in of that name does catch the call). On Windows lib.nvim
 -- starts explorer.exe / rundll32.exe, names a `.cmd` stand-in cannot catch (testing.nvim task
 -- fakes-unter-windows-exe-namen-explorer-exe-rundll32-exe-und), so there the opener of lib.nvim itself is replaced by a
 -- recording one and the sheet checks the hand-over only. Which application comes up is the `manual` part.
@@ -7,7 +8,7 @@ return {
   id = "gopath.external",
   feature = "gopath.external",
   title = "gopath.nvim: gF on a PDF, an image or a URL hands it to the system opener, not to a buffer",
-  fakes = { "xdg-open", "open" },
+  fakes = { "xdg-open", "open", "explorer.exe", "rundll32.exe" },
   steps = {
     {
       lua = [[dofile(vim.fn.getcwd() .. "/TESTS/sheets/_helpers.lua")
@@ -28,7 +29,7 @@ return {
       _G.handed = function()
         local all = vim.deepcopy(_G.OPENED)
         if not _G.WIN then
-          for _, name in ipairs({ "xdg-open", "open" }) do
+          for _, name in ipairs({ "xdg-open", "open", "explorer.exe", "rundll32.exe" }) do
             for _, call in ipairs(fakes.read(vim.env.TESTING_FAKES, name)) do
               all[#all + 1] = call.argv[#call.argv]
             end
