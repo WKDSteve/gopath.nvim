@@ -22,7 +22,10 @@ command typed into a child editor, the outcome asserted on buffers, windows and 
 `TESTS/sheets_spec.lua` runs them (`bash scripts/test.sh --file sheets`). `gM` runs lib.nvim's real
 reveal against stand-ins for the programs it starts (`fakes`: PowerShell, nautilus, `open`), so the call is
 checked; that the file manager and the real filetree.nvim behind `gT` show the file stays with a person
-(`manual` of the sheet).
+(`manual` of the sheet). The same holds for `gF` on a PDF, an image or a URL (the system opener) and for
+`gY` without a clipboard provider (the system clipboard tool). `gopath-commits` runs real git on a
+throwaway repository and its clone, so `git show`, the file of a commit and the fetch of a missing commit
+run for real without any network.
 
 A sheet's `task` names the task it came from, and it keeps naming it once that task is done: no
 standing "regression sheets" task is opened for them. `testing sheets report --tasks` then writes into
