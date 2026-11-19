@@ -98,3 +98,28 @@ end
 function _G.line()
   return vim.api.nvim_get_current_line()
 end
+
+---Run git in `dir` (relative to the temp directory) for a throwaway history; a failure raises. Identity, signing and
+---line endings are fixed here so the history is the same on every machine.
+---@param dir string
+---@param args string[]
+---@return string stdout without the trailing newline
+function _G.git(dir, args)
+  local cmd = {
+    "git",
+    "-c",
+    "user.name=sheet",
+    "-c",
+    "user.email=sheet@example.invalid",
+    "-c",
+    "commit.gpgsign=false",
+    "-c",
+    "core.autocrlf=false",
+    "-c",
+    "init.defaultBranch=main",
+  }
+  vim.list_extend(cmd, args)
+  local res = vim.system(cmd, { text = true, cwd = _G.DIR .. "/" .. dir }):wait()
+  if res.code ~= 0 then error(table.concat(args, " ") .. ": " .. tostring(res.stderr), 0) end
+  return vim.trim(res.stdout or "")
+end

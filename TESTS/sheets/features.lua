@@ -18,11 +18,13 @@ return {
     id = "gopath.whole-line",
     title = "A path anywhere on the line is found, with path:line:col from stack traces",
     docs = "docs/FEATURES/NAVIGATION.md",
+    perf = "skip:in-process resolution of the line, starts no process; gopath.resolve and gopath.open measure gF",
   },
   {
     id = "gopath.fuzzy",
     title = "When the exact file does not exist, similar names are offered",
     docs = "docs/FEATURES/NAVIGATION.md",
+    perf = "skip:in-process directory listing (vim.uv), starts no process; gopath.resolve covers near names",
   },
   {
     id = "gopath.probe",
@@ -71,16 +73,19 @@ return {
   {
     id = "gopath.commits",
     title = "gF on a commit hash (or repo@hash) opens it in git show, offers to fetch a missing one; diff lines lead to the file",
+    surface = { "command:Gopath commit" },
     docs = "docs/FEATURES/COMMITS.md",
   },
   {
     id = "gopath.hover",
     title = "hover.nvim previews the path under the cursor through gopath",
     docs = "docs/FEATURES/INTEGRATIONS.md",
+    perf = "skip:gopath answers hover.nvim in-process (no process); hover.nvim's own sheets measure the preview",
   },
   {
     id = "gopath.context-menu",
     title = "The right-click menu has a Paths entry for the path under the cursor",
     docs = "docs/FEATURES/INTEGRATIONS.md",
+    perf = "skip:an in-process menu entry over the resolver; the actions behind it are measured by their own sheets",
   },
 }
