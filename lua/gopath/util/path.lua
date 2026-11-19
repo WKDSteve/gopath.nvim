@@ -289,7 +289,9 @@ local function get_plugin_dirs()
   -- vim.pack (Neovim 0.12+): entries expose the install path either directly
   -- or nested under `spec`, depending on version.
   if type(vim.pack) == "table" and type(vim.pack.get) == "function" then
-    local ok_pack, entries = pcall(vim.pack.get)
+    -- `info = false`: only the paths are read here; the default runs `git version` synchronously and then
+    -- asks git about every plugin (a 215 ms freeze on the first resolution). An older vim.pack ignores it.
+    local ok_pack, entries = pcall(vim.pack.get, nil, { info = false })
     if ok_pack and type(entries) == "table" then
       for _, e in ipairs(entries) do
         if type(e) == "table" then

@@ -320,6 +320,35 @@ return function(H)
     PATH.invalidate_caches()
   end)
 
+  H.check("search_in_plugin_dirs: vim.pack is asked for its paths only, no git", function()
+    -- `vim.pack.get()` with its default `info = true` first runs `git version` synchronously and then reads git
+    -- information of every plugin (a 215 ms freeze on the first resolution, testing perf 2026-11-19). gopath
+    -- reads `path` only.
+    local plugin = H.tmpdir()
+    H.write(plugin .. "/lua/packplug/init.lua", { "return {}" })
+    local saved = rawget(vim, "pack")
+    local asked
+    rawset(vim, "pack", {
+      get = function(names, opts)
+        asked = { names = names, opts = opts }
+        return { { spec = { name = "packplug" }, path = plugin } }
+      end,
+    })
+    local ok, err = pcall(function()
+      H.with_modules({ ["lazy.core.config"] = false }, function()
+        with_fresh_plugin_index(function()
+          H.truthy(PATH.search_in_plugin_dirs("packplug"), "the vim.pack path is indexed")
+        end)
+      end)
+    end)
+    rawset(vim, "pack", saved)
+    PATH.invalidate_caches()
+    if not ok then error(err, 0) end
+    H.truthy(asked, "vim.pack.get was asked")
+    H.is_nil(asked.names, "all plugins")
+    H.eq(asked.opts and asked.opts.info, false, "info = false: no git version, no git per plugin")
+  end)
+
   -- ── search_module (the composed chain) ─────────────────────────────────────
 
   H.check("search_module: runtimepath wins over the plugin-dir fallback", function()
