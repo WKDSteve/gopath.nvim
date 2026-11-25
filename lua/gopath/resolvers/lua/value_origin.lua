@@ -7,6 +7,7 @@ local ALX = require("gopath.resolvers.lua.alias_index")
 local PATH = require("gopath.util.path")
 local CROSS = require("gopath.util.cross")
 local AST = require("gopath.resolvers.lua.ts_lua_ast")
+local DOT = require("gopath.util.dotted")
 
 local M = {}
 
@@ -68,18 +69,6 @@ local function get_doc(abs)
   return doc, primary, secondary
 end
 
----Split a dotted string ("a.b.c") into its segments.
----@internal
----@param s string
----@return string[]
-local function split_by_dot(s)
-  local t = {}
-  for p in s:gmatch("[^%.]+") do
-    t[#t + 1] = p
-  end
-  return t
-end
-
 ---Resolve base identifier to either:
 ---  a) { kind="module", module="x.y", extra_chain="cfg.highlight" }
 ---  b) { kind="current", base="M",   extra_chain="cfg.highlight" }
@@ -108,7 +97,7 @@ local function resolve_base(base_id, initial_chain, bind_map, alias_map)
       return { kind = "module", module = entry.module, extra_chain = suffix }
     elseif entry.kind == "chain" and entry.chain then
       -- entry.chain might be "C.cfg.highlight" or "M"
-      local parts = split_by_dot(entry.chain)
+      local parts = DOT.split(entry.chain)
       if #parts == 0 then break end
       local head = parts[1]
       if #parts > 1 then

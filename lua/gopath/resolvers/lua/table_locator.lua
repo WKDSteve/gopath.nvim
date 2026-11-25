@@ -12,6 +12,7 @@
 --- doesn't (yet) cover it.
 
 local AST = require("gopath.resolvers.lua.ts_lua_ast")
+local DOT = require("gopath.util.dotted")
 
 local M = {}
 
@@ -23,18 +24,6 @@ local M = {}
 ---@return string
 local function esc(str)
   return (str:gsub("([%%%^%$%(%)%.%[%]%*%+%-%?])", "%%%1"))
-end
-
----Split a dotted chain ("M.cfg.highlight") into its segments.
----@internal
----@param chain string
----@return string[]
-local function split_chain(chain)
-  local t = {}
-  for p in chain:gmatch("[^%.]+") do
-    t[#t + 1] = p
-  end
-  return t
 end
 
 ---Find the "balanced" table region starting at a line whose first `{` opens the table.
@@ -746,7 +735,7 @@ end
 ---@param seek_key string|nil
 ---@return { path:string, key_line:integer|nil, key_col:integer|nil, tbl_start:integer|nil, tbl_end:integer|nil, key_missing:true|nil }|nil
 function M.locate_doc(doc, base_chain, seek_key)
-  local segs = split_chain(base_chain) -- { ROOT, cfg, highlight, ... }
+  local segs = DOT.split(base_chain) -- { ROOT, cfg, highlight, ... }
   if #segs == 0 then return nil end
 
   return ts_locate(doc, segs, seek_key) or legacy_locate(doc.lines, segs, seek_key, doc.path)
