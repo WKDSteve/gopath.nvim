@@ -233,11 +233,16 @@ function M.copy_location()
     text = ("%s:%d:%d"):format(left, l, c)
   end
 
-  if copy(text) then
-    LOG.info("copied to clipboard")
-  else
-    LOG.warn("could not copy to clipboard: no provider and no external tool found")
-  end
+  -- The callback form returns at once: without a provider the system tool
+  -- (PowerShell Set-Clipboard, ...) runs in the background instead of
+  -- freezing the editor for up to 700 ms. The verdict arrives on a later tick.
+  copy(text, function(ok)
+    if ok then
+      LOG.info("copied to clipboard")
+    else
+      LOG.warn("could not copy to clipboard: no provider and no external tool found")
+    end
+  end)
 end
 
 -- ── Visual selection helpers ─────────────────────────────────────────────────

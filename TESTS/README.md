@@ -279,8 +279,9 @@ matched. Fixed by normalising separators before each call. Separately,
 proof the clipboard was written; that call is a silent no-op without a
 provider (which this repo's own CI Neovim reports), so a failed copy still
 told the user "copied to clipboard". Both branches now go through lib.nvim's
-verified `copy_to_clipboard`, and the notify only claims success when that
-returns `true`.
+verified `copy_to_clipboard` in its callback form (`copy(text, on_done)`, which
+returns at once instead of waiting for the system tool), and the notify only
+claims success when `on_done` reports `true`.
 
 This re-audit found and fixed one sibling instance of that same
 backslash-vs-Linux defect, missed by the pass above: `linepath.lua`'s three

@@ -20,9 +20,11 @@ return {
           and text:find("line=3", 1, true) ~= nil
       end
       -- The clipboard leaves the child editor: what would reach it is recorded instead.
-      package.loaded["lib.nvim.cross.copy_to_clipboard"] = function(text)
+      package.loaded["lib.nvim.cross.copy_to_clipboard"] = function(text, on_done)
         _G.COPIED = text
-        return true
+        vim.schedule(function()
+          on_done(true)
+        end)
       end
       _G.copied = function()
         local text = _G.COPIED
@@ -42,19 +44,21 @@ return {
     { expect = [[vim.bo.buftype == "nofile"]], note = "no report opened anything" },
 
     { keys = "gY", note = "gY: path:line:col, and it says so" },
-    { expect = [[_G.copied() and _G.noted("copied to clipboard")]] },
+    { wait = [[_G.copied() and _G.noted("copied to clipboard")]], timeout = 3000 },
     { keys = ":Gopath copy<CR>" },
-    { expect = [[_G.copied() and _G.noted("copied to clipboard")]] },
+    { wait = [[_G.copied() and _G.noted("copied to clipboard")]], timeout = 3000 },
     { keys = ":GopathCopy<CR>" },
-    { expect = [[_G.copied() and _G.noted("copied to clipboard")]] },
+    { wait = [[_G.copied() and _G.noted("copied to clipboard")]], timeout = 3000 },
 
     {
-      lua = [[package.loaded["lib.nvim.cross.copy_to_clipboard"] = function()
-        return false
+      lua = [[package.loaded["lib.nvim.cross.copy_to_clipboard"] = function(_, on_done)
+        vim.schedule(function()
+          on_done(false)
+        end)
       end]],
       note = "no clipboard at all: it does not claim to have copied",
     },
     { keys = "gY" },
-    { expect = [[_G.noted("could not copy to clipboard")]] },
+    { wait = [[_G.noted("could not copy to clipboard")]], timeout = 3000 },
   },
 }

@@ -318,6 +318,43 @@ return function(H)
     H.eq(vim.fn.getreg("+"), clipboard_works and "<help:nvim_buf_set_lines()>:1:1" or "")
   end)
 
+  -- gY must not wait for the system clipboard tool: it hands lib.nvim an
+  -- `on_done` callback and returns, and the verdict is reported from it.
+  -- The stand-in blocks (errors) when called without a callback, so the old
+  -- waiting form `copy(text)` fails here.
+  H.check("copy_location: does not wait for the clipboard, reports from the callback", function()
+    local pending, seen
+    H.with_modules({
+      ["lib.nvim.cross.copy_to_clipboard"] = function(text, on_done)
+        if type(on_done) ~= "function" then
+          error("copy_location called the waiting form copy(text)")
+        end
+        seen = text
+        pending = on_done
+      end,
+    }, function()
+      with_commands(
+        { kind = "file", path = "/a/b.lua", range = { line = 2, col = 3 } },
+        nil,
+        function(commands)
+          local notes = H.capture_notify(function()
+            commands.copy_location()
+          end)
+          H.eq(seen, "/a/b.lua:2:3")
+          H.eq(H.notify_text(notes), "", "nothing is claimed before the tool has answered")
+          notes = H.capture_notify(function()
+            pending(true)
+          end)
+          H.match(H.notify_text(notes), "copied to clipboard")
+          notes = H.capture_notify(function()
+            pending(false)
+          end)
+          H.match(H.notify_text(notes), "could not copy to clipboard")
+        end
+      )
+    end)
+  end)
+
   H.check("copy_location: nothing resolved leaves the clipboard alone", function()
     -- Without a provider, even this setup write is a no-op -- the register
     -- reads back "" either way, not "untouched". What this test actually
