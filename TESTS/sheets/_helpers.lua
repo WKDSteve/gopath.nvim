@@ -119,7 +119,19 @@ function _G.git(dir, args)
     "init.defaultBranch=main",
   }
   vim.list_extend(cmd, args)
-  local res = vim.system(cmd, { text = true, cwd = _G.DIR .. "/" .. dir }):wait()
-  if res.code ~= 0 then error(table.concat(args, " ") .. ": " .. tostring(res.stderr), 0) end
-  return vim.trim(res.stdout or "")
+  -- A failure keeps git's own words (the hosted CI once failed here and only a stacktrace survived). One retry
+  -- covers a transient failure (a lock, a busy temp directory); a second failure raises with both attempts.
+  local failures = {}
+  for _ = 1, 2 do
+    local res = vim.system(cmd, { text = true, cwd = _G.DIR .. "/" .. dir }):wait()
+    if res.code == 0 then return vim.trim(res.stdout or "") end
+    failures[#failures + 1] = ("git %s (in %q): exit %s, stdout %q, stderr %q"):format(
+      table.concat(args, " "),
+      dir,
+      tostring(res.code),
+      vim.trim(res.stdout or ""),
+      vim.trim(res.stderr or "")
+    )
+  end
+  error(table.concat(failures, " | retry: "), 0)
 end
