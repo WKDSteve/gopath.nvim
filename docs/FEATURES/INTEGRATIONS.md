@@ -84,7 +84,7 @@ integrations through):
 ```lua
 local items = require("gopath.integrations.menu").items()   -- inline entries
 -- or:
-local sub = require("gopath.integrations.menu").submenu()   -- a single "  Paths" fly-out, or nil
+local sub = require("gopath.integrations.menu").submenu()   -- a single "Paths" fly-out, or nil
 ```
 
 Self-gating like the other two: an empty list / `nil` when ui.nvim (soft

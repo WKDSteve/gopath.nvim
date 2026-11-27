@@ -33,7 +33,21 @@
 --- `vim.list_extend` `M.items()` unconditionally, or skip the fly-out
 --- entirely when `M.submenu()` returns nil.
 
+local nerd = require("lib.nvim.ui.nerd_font")
+
 local M = {}
+
+---@internal
+---One glyph per entry, drawn in the renderer's icon column (`opts.icon`), never
+---in the label: a label that starts with spaces or a glyph indents its row past
+---every other one. ASCII fallback without a declared Nerd Font.
+---@type table<string, string>
+local ICON = {
+  open = nerd.glyph("F03CC", "o"), -- open-in-new
+  explorer = nerd.glyph("F024B", "d"), -- folder
+  filetree = nerd.glyph("F0645", "t"), -- file-tree
+  paths = nerd.glyph("F0337", "p"), -- link
+}
 
 ---@internal
 ---Lazily load ui.contextmenu. This module is itself opt-in (never required
@@ -158,15 +172,15 @@ function M.items(_opts)
   local out = {}
   cm.group(
     out,
-    cm.entry(true, "  Open", function()
+    cm.entry(true, "Open", function()
       commands.open_result(res, "edit")
-    end),
-    cm.entry(can_reveal, "  Reveal in File Manager", function()
+    end, nil, { icon = ICON.open }),
+    cm.entry(can_reveal, "Reveal in File Manager", function()
       commands.open_result(res, "explorer")
-    end),
-    cm.entry(can_reveal, "  Reveal in filetree.nvim", function()
+    end, nil, { icon = ICON.explorer }),
+    cm.entry(can_reveal, "Reveal in filetree.nvim", function()
       commands.open_result(res, "filetree")
-    end)
+    end, nil, { icon = ICON.filetree })
   )
   return out
 end
@@ -175,14 +189,14 @@ end
 ---for hosts that prefer a "Paths ▸" fly-out instead of inline entries.
 ---Returns nil when there is nothing to show (including when ui.nvim is not
 ---installed, or nothing resolves).
----@param label? string  submenu label (default "  Paths")
+---@param label? string  submenu label (default "Paths")
 ---@return table|nil
 function M.submenu(label)
   local cm = contextmenu()
   if not cm then return nil end
   local items = M.items()
   if #items == 0 then return nil end
-  return cm.submenu(label or "  Paths", items)
+  return cm.submenu(label or "Paths", items, { icon = ICON.paths })
 end
 
 return M

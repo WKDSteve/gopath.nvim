@@ -14,9 +14,10 @@ return function(H)
   ---@return table
   local function fake_contextmenu()
     return {
-      entry = function(available, label, fn)
+      entry = function(available, label, fn, rtxt, opts)
         if not available then return nil end
-        return { name = label, cmd = fn }
+        opts = opts or {}
+        return { name = label, cmd = fn, rtxt = rtxt, icon = opts.icon }
       end,
       group = function(out, ...)
         local n = select("#", ...)
@@ -26,8 +27,8 @@ return function(H)
         end
         return n > 0
       end,
-      submenu = function(label, items)
-        return { name = label, items = items }
+      submenu = function(label, items, opts)
+        return { name = label, items = items, icon = (opts or {}).icon }
       end,
     }
   end
@@ -74,9 +75,15 @@ return function(H)
     }, function()
       local items = MENU.items()
       H.eq(#items, 3)
-      H.eq(items[1].name, "  Open")
-      H.eq(items[2].name, "  Reveal in File Manager")
-      H.eq(items[3].name, "  Reveal in filetree.nvim")
+      H.eq(items[1].name, "Open")
+      H.eq(items[2].name, "Reveal in File Manager")
+      H.eq(items[3].name, "Reveal in filetree.nvim")
+      -- Icons live in the renderer's icon column (`opts.icon`): a label padded
+      -- with spaces where a glyph was meant indents its row past all others.
+      for _, item in ipairs(items) do
+        H.falsy(item.name:match("^%s"), "label starts with whitespace: " .. item.name)
+        H.truthy(type(item.icon) == "string" and item.icon ~= "", "no icon on " .. item.name)
+      end
     end)
   end)
 
@@ -92,7 +99,7 @@ return function(H)
     }, function()
       local items = MENU.items()
       H.eq(#items, 1)
-      H.eq(items[1].name, "  Open")
+      H.eq(items[1].name, "Open")
     end)
   end)
 
@@ -134,7 +141,7 @@ return function(H)
     for _, kind in ipairs({ "module", "id", "require", "chain", "field", "symbol", "current" }) do
       H.same(
         labels_for({ kind = kind, path = "/repo/lua/x.lua", exists = true }),
-        { "  Open", "  Reveal in File Manager", "  Reveal in filetree.nvim" },
+        { "Open", "Reveal in File Manager", "Reveal in filetree.nvim" },
         kind .. " result"
       )
     end
@@ -143,7 +150,7 @@ return function(H)
   H.check(
     "items(): no reveal entries for a missing path, a commit or a file at a commit",
     function()
-      local open_only = { "  Open" }
+      local open_only = { "Open" }
       H.same(
         labels_for({ kind = "file", path = "/nope.lua", exists = false }),
         open_only,
@@ -236,7 +243,8 @@ return function(H)
     }, function()
       local sub = MENU.submenu()
       H.truthy(sub)
-      H.eq(sub.name, "  Paths")
+      H.eq(sub.name, "Paths")
+      H.truthy(type(sub.icon) == "string" and sub.icon ~= "", "the fly-out carries an icon")
       H.eq(#sub.items, 3)
     end)
   end)
@@ -278,7 +286,7 @@ return function(H)
         local items = MENU.items()
         H.falsy(cursor_pipeline_called, "the live selection short-circuited the cursor pipeline")
         H.eq(#items, 1, "a URL only ever gets the Open entry")
-        H.eq(items[1].name, "  Open")
+        H.eq(items[1].name, "Open")
       end)
       vim.cmd("normal! \27") -- leave Visual mode (Esc) before the next check runs
     end
