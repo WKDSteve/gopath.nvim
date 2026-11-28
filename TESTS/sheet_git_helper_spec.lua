@@ -14,7 +14,5 @@ assert(
   "the message names the command: " .. err
 )
 assert(err:find("exit 128", 1, true), "the message names the exit code: " .. err)
-assert(
-  err:find("no-such-ref-xyz", 1, true) and err:find("stderr", 1, true),
-  "the message carries stderr: " .. err
-)
+-- git's own words for a missing ref; neither the command text nor the format string carries them.
+assert(err:find("Needed a single revision", 1, true), "the message carries stderr: " .. err)
