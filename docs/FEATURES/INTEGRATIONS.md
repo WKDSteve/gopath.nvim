@@ -76,7 +76,7 @@ hijacking the picture.
 The two sections above are gopath as a library *other plugins* call into.
 This one is the other direction: gopath itself is a "Pattern-B" contributor
 to a host's global right-click context menu (`lib.nvim.contextmenu`/
-nvzone-menu-shaped — the same convention
+context-menu-shaped — the same convention
 [filetree.nvim](https://github.com/WKDSteve/filetree.nvim) and
 [open.nvim](https://github.com/WKDSteve/open.nvim) ship their own menu
 integrations through):
